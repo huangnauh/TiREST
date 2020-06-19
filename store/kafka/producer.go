@@ -13,6 +13,8 @@ import (
 	"time"
 )
 
+const MaxMessage = 1024
+
 type Connector struct {
 	producer  sarama.AsyncProducer
 	log       *logrus.Entry
@@ -22,7 +24,7 @@ type Connector struct {
 	conf      *config.Config
 }
 
-func Open(conf *config.Config) (store.Connector, error) {
+func NewConnector(conf *config.Config) (store.Connector, error) {
 	c := sarama.NewConfig()
 
 	backoff := func(retries, maxRetries int) time.Duration {
@@ -57,7 +59,7 @@ func Open(conf *config.Config) (store.Connector, error) {
 		producer:  producer,
 		queue:     queue,
 		log:       l,
-		writeChan: make(chan store.KeyEntry),
+		writeChan: make(chan store.KeyEntry, MaxMessage),
 		conf:      conf,
 	}
 	go conn.runProducer()

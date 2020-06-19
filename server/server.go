@@ -10,6 +10,7 @@ import (
 	"github.com/swaggo/gin-swagger/swaggerFiles"
 	"gitlab.s.upyun.com/platform/tikv-proxy/config"
 	"gitlab.s.upyun.com/platform/tikv-proxy/middleware"
+	"gitlab.s.upyun.com/platform/tikv-proxy/store"
 	"gitlab.s.upyun.com/platform/tikv-proxy/version"
 	"golang.org/x/net/trace"
 	"net/http"
@@ -21,9 +22,10 @@ type Server struct {
 	server *http.Server
 	router *gin.Engine
 	conf   *config.Config
+	store  *store.Store
 }
 
-func NewServer(conf *config.Config) *Server {
+func NewServer(conf *config.Config) (*Server, error) {
 	gin.SetMode(conf.HttpServerMode())
 	router := gin.New()
 	router.Use(middleware.SetAccessLog(), gin.Recovery())
@@ -36,7 +38,17 @@ func NewServer(conf *config.Config) *Server {
 		WriteTimeout:      conf.Server.WriteTimeout,
 		IdleTimeout:       conf.Server.IdleTimeout,
 	}
-	return &Server{server: server, router: router, conf: conf}
+
+	s, err := store.NewStore(conf)
+	if err != nil {
+		return nil, err
+	}
+	return &Server{
+		server: server,
+		router: router,
+		conf:   conf,
+		store:  s,
+	}, nil
 }
 
 func (s *Server) registerRoutes() error {

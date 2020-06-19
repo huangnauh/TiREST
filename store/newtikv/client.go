@@ -1,32 +1,43 @@
-package tikv
+package newtikv
 
 import (
 	"bytes"
 	"context"
-	tikvConfig "github.com/tikv/client-go/config"
-	"github.com/tikv/client-go/key"
-	"github.com/tikv/client-go/txnkv"
-	"github.com/tikv/client-go/txnkv/kv"
+	//tiConfig "github.com/pingcap/tidb/config"
+	"github.com/pingcap/tidb/kv"
+	"github.com/pingcap/tidb/store/tikv"
 	"gitlab.s.upyun.com/platform/tikv-proxy/config"
 	"gitlab.s.upyun.com/platform/tikv-proxy/store"
 	"gitlab.s.upyun.com/platform/tikv-proxy/xerror"
-	"time"
 )
 
 type TiKV struct {
-	client *txnkv.Client
+	client kv.Storage
 	conf   *config.Config
 }
 
 func NewDB(conf *config.Config) (store.DB, error) {
-	tikvConfig := tikvConfig.Default()
-	tikvConfig.Txn.TsoSlowThreshold = 100 * time.Millisecond
-	client, err := txnkv.NewClient(context.TODO(), conf.Store.PdAddresses, tikvConfig)
+	d := tikv.Driver{}
+	s, err := d.Open(conf.Store.Path)
 	if err != nil {
 		return nil, err
 	}
+
+	//if conf.Store.GCEnable {
+	//	if raw, ok := s.(tikv.EtcdBackend); ok {
+	//		tikv.NewGCHandlerFunc =
+	//		err = raw.StartGCWorker()
+	//		if err != nil {
+	//			return nil, err
+	//		}
+	//	}
+	//}
+
+	//https://github.com/pingcap/tidb/pull/12095
+	//gConfig := tiConfig.GetGlobalConfig()
+
 	return &TiKV{
-		client: client,
+		client: s,
 		conf:   conf,
 	}, nil
 }
@@ -36,15 +47,20 @@ func (t *TiKV) Close() error {
 }
 
 func (t *TiKV) Get(key []byte, option store.Option) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.ReadTimeout)
-	defer cancel()
-	tx, err := t.client.Begin(ctx)
+	tx, err := t.client.Begin()
 	if err != nil {
 		return nil, xerror.ErrGetTimestampFailed
 	}
 
+	if option.ReplicaRead {
+		snapshot := tx.GetSnapshot()
+		snapshot.SetOption(kv.ReplicaRead, kv.ReplicaReadFollower)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.ReadTimeout)
+	defer cancel()
 	v, err := tx.Get(ctx, key)
-	if err == kv.ErrNotExist {
+	if kv.IsErrNotFound(err) {
 		return nil, xerror.ErrNotExists
 	}
 	if err != nil {
@@ -54,27 +70,31 @@ func (t *TiKV) Get(key []byte, option store.Option) ([]byte, error) {
 }
 
 func (t *TiKV) List(start, end []byte, limit int, option store.Option) ([]store.KeyEntry, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.ListTimeout)
-	defer cancel()
-	tx, err := t.client.Begin(ctx)
+	tx, err := t.client.Begin()
 	if err != nil {
 		return nil, xerror.ErrGetTimestampFailed
 	}
-	if option.KeyOnly {
-		tx.SetOption(kv.KeyOnly, true)
-	}
 
-	it, err := tx.Iter(ctx, key.Key(start), key.Key(end))
+	it, err := tx.Iter(kv.Key(start), kv.Key(end))
 	if err != nil {
 		return nil, xerror.ErrListKVFailed
 	}
 	defer it.Close()
 
+	if option.KeyOnly {
+		tx.SetOption(kv.KeyOnly, true)
+	}
+
+	if option.ReplicaRead {
+		snapshot := tx.GetSnapshot()
+		snapshot.SetOption(kv.ReplicaRead, kv.ReplicaReadFollower)
+	}
+
 	ret := make([]store.KeyEntry, 0)
 	for it.Valid() && limit > 0 {
 		ret = append(ret, store.KeyEntry{Key: it.Key(), Entry: it.Value()})
 		limit--
-		err = it.Next(ctx)
+		err = it.Next()
 		if err != nil {
 			return nil, xerror.ErrListKVFailed
 		}
@@ -83,15 +103,15 @@ func (t *TiKV) List(start, end []byte, limit int, option store.Option) ([]store.
 }
 
 func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte) error {
-	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.WriteTimeout)
-	defer cancel()
-	tx, err := t.client.Begin(ctx)
+	tx, err := t.client.Begin()
 	if err != nil {
 		return xerror.ErrGetTimestampFailed
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.WriteTimeout)
+	defer cancel()
 	v, err := tx.Get(ctx, key)
-	if err == kv.ErrNotExist {
+	if kv.IsErrNotFound(err) {
 		if len(oldVal) > 0 {
 			return xerror.ErrCheckAndSetFailed
 		}
@@ -103,7 +123,7 @@ func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte) error {
 		}
 	}
 
-	if len(newVal) > 0 {
+	if len(newVal) == 0 {
 		err = tx.Delete(key)
 	} else {
 		err = tx.Set(key, newVal)

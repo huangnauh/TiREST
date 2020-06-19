@@ -23,6 +23,8 @@ type Connector struct {
 }
 
 type Store struct {
+	Path string
+	//GCEnable bool
 	PdAddresses  []string
 	ReadTimeout  time.Duration
 	ListTimeout  time.Duration
