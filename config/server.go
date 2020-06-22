@@ -9,10 +9,11 @@ import (
 )
 
 type Connector struct {
-	BrokerList      []string
-	Retry           int
-	BackOff         time.Duration
-	MaxBackOff      time.Duration
+	Name            string        `toml:"name"`
+	BrokerList      []string      `toml:"broker-list"`
+	Retry           int           `toml:"entry"`
+	BackOff         time.Duration `toml:"back-off"`
+	MaxBackOff      time.Duration `toml:"max-back-off"`
 	Topic           string        `toml:"topic"`
 	QueueDataPath   string        `toml:"queue-data-path"`
 	MemQueueSize    int64         `toml:"mem-queue-size"`
@@ -20,43 +21,45 @@ type Connector struct {
 	SyncEvery       int64         `toml:"sync-every"`
 	SyncTimeout     time.Duration `toml:"sync-timeout"`
 	MaxMsgSize      int32         `toml:"max-msg-size"`
+	WriteTimeout    time.Duration `toml:"write-timeout"`
 }
 
 type Store struct {
-	Path string
-	//GCEnable bool
-	PdAddresses  []string
-	ReadTimeout  time.Duration
-	ListTimeout  time.Duration
-	WriteTimeout time.Duration
+	Name         string        `toml:"name"`
+	Path         string        `toml:"path"`
+	PdAddresses  []string      `toml:"pd-address"`
+	ReadTimeout  time.Duration `toml:"read-timeout"`
+	ListTimeout  time.Duration `toml:"list-timeout"`
+	WriteTimeout time.Duration `toml:"write-timeout"`
 }
 
 type Server struct {
-	HttpHost          string        `toml:"http_host"`
-	HttpPort          int           `toml:"http_port"`
-	ReadTimeout       time.Duration `toml:"read_timeout"`
-	ConnTimeout       time.Duration `toml:"conn_timeout"`
-	ReadHeaderTimeout time.Duration `toml:"read_header_timeout"`
-	WriteTimeout      time.Duration `toml:"write_timeout"`
-	IdleTimeout       time.Duration `toml:"idle_timeout"`
-	MaxIdleConns      int           `toml:"max_idle_conns"`
+	HttpHost          string        `toml:"http-host"`
+	HttpPort          int           `toml:"http-port"`
+	ReadTimeout       time.Duration `toml:"read-timeout"`
+	ConnTimeout       time.Duration `toml:"conn-timeout"`
+	ReadHeaderTimeout time.Duration `toml:"read-header-timeout"`
+	WriteTimeout      time.Duration `toml:"write-timeout"`
+	IdleTimeout       time.Duration `toml:"idle-timeout"`
+	MaxIdleConns      int           `toml:"max-idle-conns"`
+	ReplicaRead       bool          `toml:"replica-read"`
 }
 
 type Log struct {
 	Level        string `toml:"level"`
-	ErrorLogDir  string `toml:"error_log_dir"`
-	AccessLogDir string `toml:"access_log_dir"`
-	BufferSize   int    `toml:"buffer_size"`
-	MaxBytes     int    `toml:"max_bytes"`
+	ErrorLogDir  string `toml:"error-log-dir"`
+	AccessLogDir string `toml:"access-log-dir"`
+	BufferSize   int    `toml:"buffer-size"`
+	MaxBytes     int    `toml:"max-bytes"`
 	BackupCount  int    `toml:"backup_count"`
 }
 
 type Config struct {
-	Store         Store
-	Server        Server
-	Connector     Connector
-	Log           Log
-	EnableTracing bool `toml:"enable_tracing"`
+	Store         Store     `toml:"store"`
+	Server        Server    `toml:"server"`
+	Connector     Connector `toml:"connector"`
+	Log           Log       `toml:"log"`
+	EnableTracing bool      `toml:"enable-tracing"`
 }
 
 func defaultConfig() *Config {

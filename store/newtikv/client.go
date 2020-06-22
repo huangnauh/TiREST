@@ -11,14 +11,27 @@ import (
 	"gitlab.s.upyun.com/platform/tikv-proxy/xerror"
 )
 
+const DBName = "newtikv"
+
 type TiKV struct {
 	client kv.Storage
 	conf   *config.Config
 }
 
-func NewDB(conf *config.Config) (store.DB, error) {
-	d := tikv.Driver{}
-	s, err := d.Open(conf.Store.Path)
+type Driver struct {
+}
+
+func init() {
+	store.RegisterDB(Driver{})
+}
+
+func (d Driver) Name() string {
+	return DBName
+}
+
+func (d Driver) Open(conf *config.Config) (store.DB, error) {
+	driver := tikv.Driver{}
+	s, err := driver.Open(conf.Store.Path)
 	if err != nil {
 		return nil, err
 	}
@@ -133,6 +146,31 @@ func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte) error {
 		return xerror.ErrSetKVFailed
 	}
 
+	err = tx.Commit(ctx)
+	if err != nil {
+		return xerror.ErrCommitKVFailed
+	}
+	return nil
+}
+
+func (t *TiKV) Put(key, val []byte) error {
+	tx, err := t.client.Begin()
+	if err != nil {
+		return xerror.ErrGetTimestampFailed
+	}
+
+	if len(val) == 0 {
+		err = tx.Delete(key)
+	} else {
+		err = tx.Set(key, val)
+	}
+
+	if err != nil {
+		return xerror.ErrSetKVFailed
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.WriteTimeout)
+	defer cancel()
 	err = tx.Commit(ctx)
 	if err != nil {
 		return xerror.ErrCommitKVFailed

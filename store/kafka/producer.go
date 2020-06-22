@@ -13,7 +13,10 @@ import (
 	"time"
 )
 
-const MaxMessage = 1024
+const (
+	MaxMessage = 1024
+	MQ         = "kafka"
+)
 
 type Connector struct {
 	producer  sarama.AsyncProducer
@@ -22,9 +25,26 @@ type Connector struct {
 	writeBuf  bytes.Buffer
 	writeChan chan store.KeyEntry
 	conf      *config.Config
+	//TODO: metrics
+	//partitionOffset []struct {
+	//	queued  uint64
+	//	flushed uint64
+	//	sent    uint64
+	//}
 }
 
-func NewConnector(conf *config.Config) (store.Connector, error) {
+type Driver struct {
+}
+
+func init() {
+	store.RegisterConnector(Driver{})
+}
+
+func (d Driver) Name() string {
+	return MQ
+}
+
+func (d Driver) Open(conf *config.Config) (store.Connector, error) {
 	c := sarama.NewConfig()
 
 	backoff := func(retries, maxRetries int) time.Duration {
@@ -42,15 +62,15 @@ func NewConnector(conf *config.Config) (store.Connector, error) {
 	c.Producer.Retry.Max = conf.Connector.Retry
 	c.Producer.Retry.BackoffFunc = backoff
 
-	producer, err := sarama.NewAsyncProducer(conf.Connector.BrokerList, c)
-	if err != nil {
-		logrus.Errorf("Failed to start producer, %s", err)
-		return nil, err
-	}
-
 	l := logrus.WithFields(logrus.Fields{
 		"worker": "kafka connector",
 	})
+
+	producer, err := sarama.NewAsyncProducer(conf.Connector.BrokerList, c)
+	if err != nil {
+		l.Errorf("Failed to start producer, %s", err)
+		return nil, err
+	}
 	queue := diskqueue.New(version.APP, conf.Connector.QueueDataPath,
 		conf.Connector.MaxBytesPerFile, 4, conf.Connector.MaxMsgSize,
 		conf.Connector.SyncEvery, conf.Connector.SyncTimeout, log.NewLogFunc(l))
@@ -87,6 +107,7 @@ func (c *Connector) putQueue(msg store.KeyEntry) error {
 }
 
 func (c *Connector) runQueue() {
+	timer := time.NewTimer(c.conf.Connector.WriteTimeout)
 	for {
 		select {
 		case msg, ok := <-c.writeChan:
@@ -96,10 +117,23 @@ func (c *Connector) runQueue() {
 			err := c.putQueue(msg)
 			if err != nil {
 				c.log.Errorf("put queue failed, %s", err)
-				c.producer.Input() <- &sarama.ProducerMessage{
+				input := &sarama.ProducerMessage{
 					Topic: c.conf.Connector.Topic,
 					Key:   sarama.ByteEncoder(msg.Key),
 					Value: sarama.ByteEncoder(msg.Entry),
+				}
+
+				if !timer.Stop() {
+					select {
+					case <-timer.C:
+					default:
+					}
+				}
+				timer.Reset(c.conf.Connector.WriteTimeout)
+				select {
+				case c.producer.Input() <- input:
+				case <-timer.C:
+					c.log.Errorf("put kafka timeout, %s", msg.Key)
 				}
 			}
 		}
@@ -134,12 +168,13 @@ func (c *Connector) Send(msg store.KeyEntry) error {
 }
 
 func (c *Connector) Close() {
-	err := c.producer.Close()
-	if err != nil {
-		c.log.Errorf("producer close failed, %s", err)
-	}
-	err = c.queue.Close()
+	close(c.writeChan)
+	err := c.queue.Close()
 	if err != nil {
 		c.log.Errorf("queue close failed, %s", err)
+	}
+	err = c.producer.Close()
+	if err != nil {
+		c.log.Errorf("producer close failed, %s", err)
 	}
 }

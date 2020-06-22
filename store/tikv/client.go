@@ -13,12 +13,25 @@ import (
 	"time"
 )
 
+const DBName = "tikv"
+
 type TiKV struct {
 	client *txnkv.Client
 	conf   *config.Config
 }
 
-func NewDB(conf *config.Config) (store.DB, error) {
+type Driver struct {
+}
+
+func init() {
+	store.RegisterDB(Driver{})
+}
+
+func (d Driver) Name() string {
+	return DBName
+}
+
+func (d Driver) Open(conf *config.Config) (store.DB, error) {
 	tikvConfig := tikvConfig.Default()
 	tikvConfig.Txn.TsoSlowThreshold = 100 * time.Millisecond
 	client, err := txnkv.NewClient(context.TODO(), conf.Store.PdAddresses, tikvConfig)
@@ -109,6 +122,30 @@ func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte) error {
 		err = tx.Set(key, newVal)
 	}
 
+	if err != nil {
+		return xerror.ErrSetKVFailed
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return xerror.ErrCommitKVFailed
+	}
+	return nil
+}
+
+func (t *TiKV) Put(key, val []byte) error {
+	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.WriteTimeout)
+	defer cancel()
+	tx, err := t.client.Begin(ctx)
+	if err != nil {
+		return xerror.ErrGetTimestampFailed
+	}
+
+	if len(val) > 0 {
+		err = tx.Delete(key)
+	} else {
+		err = tx.Set(key, val)
+	}
 	if err != nil {
 		return xerror.ErrSetKVFailed
 	}
