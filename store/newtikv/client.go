@@ -70,7 +70,7 @@ func (t *TiKV) Get(key []byte, option store.Option) ([]byte, error) {
 		snapshot.SetOption(kv.ReplicaRead, kv.ReplicaReadFollower)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.ReadTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.ReadTimeout.Duration)
 	defer cancel()
 	v, err := tx.Get(ctx, key)
 	if kv.IsErrNotFound(err) {
@@ -121,7 +121,7 @@ func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte) error {
 		return xerror.ErrGetTimestampFailed
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.WriteTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.WriteTimeout.Duration)
 	defer cancel()
 	v, err := tx.Get(ctx, key)
 	if kv.IsErrNotFound(err) {
@@ -169,7 +169,7 @@ func (t *TiKV) Put(key, val []byte) error {
 		return xerror.ErrSetKVFailed
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.WriteTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.WriteTimeout.Duration)
 	defer cancel()
 	err = tx.Commit(ctx)
 	if err != nil {

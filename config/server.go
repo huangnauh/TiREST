@@ -5,44 +5,58 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"io/ioutil"
+	"os"
 	"time"
 )
 
+type Duration struct {
+	time.Duration
+}
+
 type Connector struct {
-	Name            string        `toml:"name"`
-	BrokerList      []string      `toml:"broker-list"`
-	Retry           int           `toml:"entry"`
-	BackOff         time.Duration `toml:"back-off"`
-	MaxBackOff      time.Duration `toml:"max-back-off"`
-	Topic           string        `toml:"topic"`
-	QueueDataPath   string        `toml:"queue-data-path"`
-	MemQueueSize    int64         `toml:"mem-queue-size"`
-	MaxBytesPerFile int64         `toml:"max-bytes-per-file"`
-	SyncEvery       int64         `toml:"sync-every"`
-	SyncTimeout     time.Duration `toml:"sync-timeout"`
-	MaxMsgSize      int32         `toml:"max-msg-size"`
-	WriteTimeout    time.Duration `toml:"write-timeout"`
+	Name            string    `toml:"name"`
+	BrokerList      []string  `toml:"broker-list"`
+	Retry           int       `toml:"entry"`
+	BackOff         *Duration `toml:"back-off"`
+	MaxBackOff      *Duration `toml:"max-back-off"`
+	Topic           string    `toml:"topic"`
+	QueueDataPath   string    `toml:"queue-data-path"`
+	MemQueueSize    int64     `toml:"mem-queue-size"`
+	MaxBytesPerFile int64     `toml:"max-bytes-per-file"`
+	SyncEvery       int64     `toml:"sync-every"`
+	SyncTimeout     *Duration `toml:"sync-timeout"`
+	MaxMsgSize      int32     `toml:"max-msg-size"`
+	WriteTimeout    *Duration `toml:"write-timeout"`
 }
 
 type Store struct {
-	Name         string        `toml:"name"`
-	Path         string        `toml:"path"`
-	PdAddresses  []string      `toml:"pd-address"`
-	ReadTimeout  time.Duration `toml:"read-timeout"`
-	ListTimeout  time.Duration `toml:"list-timeout"`
-	WriteTimeout time.Duration `toml:"write-timeout"`
+	Name         string    `toml:"name"`
+	Path         string    `toml:"path"`
+	PdAddresses  []string  `toml:"pd-address"`
+	ReadTimeout  *Duration `toml:"read-timeout"`
+	ListTimeout  *Duration `toml:"list-timeout"`
+	WriteTimeout *Duration `toml:"write-timeout"`
+}
+
+func (d *Duration) UnmarshalText(text []byte) error {
+	var err error
+	d.Duration, err = time.ParseDuration(string(text))
+	return err
+}
+
+func (d *Duration) MarshalText() (text []byte, err error) {
+	return []byte(d.Duration.String()), nil
 }
 
 type Server struct {
-	HttpHost          string        `toml:"http-host"`
-	HttpPort          int           `toml:"http-port"`
-	ReadTimeout       time.Duration `toml:"read-timeout"`
-	ConnTimeout       time.Duration `toml:"conn-timeout"`
-	ReadHeaderTimeout time.Duration `toml:"read-header-timeout"`
-	WriteTimeout      time.Duration `toml:"write-timeout"`
-	IdleTimeout       time.Duration `toml:"idle-timeout"`
-	MaxIdleConns      int           `toml:"max-idle-conns"`
-	ReplicaRead       bool          `toml:"replica-read"`
+	HttpHost          string    `toml:"http-host"`
+	HttpPort          int       `toml:"http-port"`
+	ReadTimeout       *Duration `toml:"read-timeout"`
+	ConnTimeout       *Duration `toml:"conn-timeout"`
+	ReadHeaderTimeout *Duration `toml:"read-header-timeout"`
+	WriteTimeout      *Duration `toml:"write-timeout"`
+	IdleTimeout       *Duration `toml:"idle-timeout"`
+	ReplicaRead       bool      `toml:"replica-read"`
 }
 
 type Log struct {
@@ -62,25 +76,49 @@ type Config struct {
 	EnableTracing bool      `toml:"enable-tracing"`
 }
 
-func defaultConfig() *Config {
+func DefaultConfig() *Config {
 	return &Config{
 		Store: Store{
+			Name:         "tikv",
 			PdAddresses:  []string{"127.0.0.1:2379"},
-			ReadTimeout:  10 * time.Second,
-			WriteTimeout: 10 * time.Second,
-			ListTimeout:  60 * time.Second,
+			ReadTimeout:  &Duration{10 * time.Second},
+			WriteTimeout: &Duration{10 * time.Second},
+			ListTimeout:  &Duration{60 * time.Second},
+		},
+		Server: Server{
+			HttpHost:          "127.0.0.1",
+			HttpPort:          6100,
+			ReadTimeout:       &Duration{10 * time.Second},
+			ConnTimeout:       &Duration{1 * time.Second},
+			ReadHeaderTimeout: &Duration{5 * time.Second},
+			WriteTimeout:      &Duration{10 * time.Second},
+			IdleTimeout:       &Duration{2 * time.Minute},
+			ReplicaRead:       false,
 		},
 		Connector: Connector{
+			Name:            "kafka",
 			BrokerList:      []string{"127.0.0.1:2379"},
 			Retry:           10000,
-			BackOff:         250 * time.Millisecond,
-			MaxBackOff:      time.Minute,
+			BackOff:         &Duration{250 * time.Millisecond},
+			MaxBackOff:      &Duration{time.Minute},
+			Topic:           "tikvmeta",
+			QueueDataPath:   "./queue/",
 			MemQueueSize:    10000,
 			MaxBytesPerFile: 100 * 1024 * 1024,
 			SyncEvery:       1000,
-			SyncTimeout:     2 * time.Second,
+			SyncTimeout:     &Duration{2 * time.Second},
 			MaxMsgSize:      1024 * 1024,
+			WriteTimeout:    &Duration{50 * time.Millisecond},
 		},
+		Log: Log{
+			Level:        "debug",
+			ErrorLogDir:  "",
+			AccessLogDir: "",
+			BufferSize:   100 * 1024,
+			MaxBytes:     512 * 1024 * 1024,
+			BackupCount:  10,
+		},
+		EnableTracing: true,
 	}
 }
 
@@ -105,10 +143,20 @@ func (c *Config) HttpServerMode() string {
 }
 
 func InitConfig(configFile string) (*Config, error) {
-	conf := defaultConfig()
+	conf := DefaultConfig()
 	err := conf.ReadFromFile(configFile)
 	if err != nil {
 		return nil, err
 	}
 	return conf, nil
+}
+
+func Save(cfg *Config, path string) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	return toml.NewEncoder(f).Encode(cfg)
 }

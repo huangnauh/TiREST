@@ -48,11 +48,11 @@ func (d Driver) Open(conf *config.Config) (store.Connector, error) {
 	c := sarama.NewConfig()
 
 	backoff := func(retries, maxRetries int) time.Duration {
-		b := conf.Connector.BackOff * time.Duration(retries+1)
-		if b > conf.Connector.MaxBackOff {
-			b = conf.Connector.MaxBackOff
+		b := conf.Connector.BackOff.Duration * time.Duration(retries+1)
+		if b > conf.Connector.MaxBackOff.Duration {
+			b = conf.Connector.MaxBackOff.Duration
 		}
-		return conf.Connector.MaxBackOff
+		return conf.Connector.MaxBackOff.Duration
 	}
 	c.Metadata.Retry.Max = conf.Connector.Retry
 	c.Metadata.Retry.BackoffFunc = backoff
@@ -73,7 +73,7 @@ func (d Driver) Open(conf *config.Config) (store.Connector, error) {
 	}
 	queue := diskqueue.New(version.APP, conf.Connector.QueueDataPath,
 		conf.Connector.MaxBytesPerFile, 4, conf.Connector.MaxMsgSize,
-		conf.Connector.SyncEvery, conf.Connector.SyncTimeout, log.NewLogFunc(l))
+		conf.Connector.SyncEvery, conf.Connector.SyncTimeout.Duration, log.NewLogFunc(l))
 
 	conn := &Connector{
 		producer:  producer,
@@ -107,7 +107,7 @@ func (c *Connector) putQueue(msg store.KeyEntry) error {
 }
 
 func (c *Connector) runQueue() {
-	timer := time.NewTimer(c.conf.Connector.WriteTimeout)
+	timer := time.NewTimer(c.conf.Connector.WriteTimeout.Duration)
 	for {
 		select {
 		case msg, ok := <-c.writeChan:
@@ -129,7 +129,7 @@ func (c *Connector) runQueue() {
 					default:
 					}
 				}
-				timer.Reset(c.conf.Connector.WriteTimeout)
+				timer.Reset(c.conf.Connector.WriteTimeout.Duration)
 				select {
 				case c.producer.Input() <- input:
 				case <-timer.C:

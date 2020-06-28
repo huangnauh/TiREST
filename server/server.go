@@ -32,10 +32,10 @@ func NewServer(conf *config.Config) (*Server, error) {
 	server := &http.Server{
 		Addr:              fmt.Sprintf("%s:%d", conf.Server.HttpHost, conf.Server.HttpPort),
 		Handler:           router,
-		ReadTimeout:       conf.Server.ReadTimeout,
-		ReadHeaderTimeout: conf.Server.ReadHeaderTimeout,
-		WriteTimeout:      conf.Server.WriteTimeout,
-		IdleTimeout:       conf.Server.IdleTimeout,
+		ReadTimeout:       conf.Server.ReadTimeout.Duration,
+		ReadHeaderTimeout: conf.Server.ReadHeaderTimeout.Duration,
+		WriteTimeout:      conf.Server.WriteTimeout.Duration,
+		IdleTimeout:       conf.Server.IdleTimeout.Duration,
 	}
 
 	s, err := store.NewStore(conf)
@@ -73,6 +73,8 @@ func (s *Server) registerRoutes() error {
 	api.GET("/meta/*key", s.Get)
 	api.PUT("/meta/*key", s.CheckAndPut)
 	api.GET("/list/", s.List)
+	api.GET("/config/", s.GetConfig)
+	api.GET("/health/", s.Health)
 	return nil
 }
 
@@ -82,9 +84,15 @@ func (s *Server) Start() {
 		s.log.Errorf("register routes err, %s", err)
 		return
 	}
+	s.log.Infof("Serving HTTP on %s port %d", s.conf.Server.HttpHost, s.conf.Server.HttpPort)
 	err = s.server.ListenAndServe()
 	if err != nil {
 		s.log.Errorf("listen err, %s", err)
+		return
+	}
+	err = s.store.Open()
+	if err != nil {
+		s.log.Errorf("register routes err, %s", err)
 		return
 	}
 }

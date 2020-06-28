@@ -8,6 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"gitlab.s.upyun.com/platform/tikv-proxy/model"
 	"gitlab.s.upyun.com/platform/tikv-proxy/store"
+	"gitlab.s.upyun.com/platform/tikv-proxy/utils"
 	"gitlab.s.upyun.com/platform/tikv-proxy/xerror"
 	"io/ioutil"
 	"net/http"
@@ -115,4 +116,18 @@ func (s *Server) List(c *gin.Context) {
 		c.Header("Content-Length", strconv.Itoa(len(jsonBytes)))
 		c.Data(200, "application/json", jsonBytes)
 	}
+}
+
+func (s *Server) GetConfig(c *gin.Context) {
+	c.Render(200, utils.TOML{Data: s.conf})
+}
+
+func (s *Server) Health(c *gin.Context) {
+	err := s.store.Health()
+	if err != nil {
+		s.log.Errorf("not health, %s", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.Writer.WriteHeader(http.StatusNoContent)
 }

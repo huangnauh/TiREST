@@ -49,7 +49,7 @@ func (t *TiKV) Close() error {
 }
 
 func (t *TiKV) Get(key []byte, option store.Option) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.ReadTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.ReadTimeout.Duration)
 	defer cancel()
 	tx, err := t.client.Begin(ctx)
 	if err != nil {
@@ -67,7 +67,7 @@ func (t *TiKV) Get(key []byte, option store.Option) ([]byte, error) {
 }
 
 func (t *TiKV) List(start, end []byte, limit int, option store.Option) ([]store.KeyEntry, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.ListTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.ListTimeout.Duration)
 	defer cancel()
 	tx, err := t.client.Begin(ctx)
 	if err != nil {
@@ -96,7 +96,7 @@ func (t *TiKV) List(start, end []byte, limit int, option store.Option) ([]store.
 }
 
 func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte) error {
-	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.WriteTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.WriteTimeout.Duration)
 	defer cancel()
 	tx, err := t.client.Begin(ctx)
 	if err != nil {
@@ -134,7 +134,7 @@ func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte) error {
 }
 
 func (t *TiKV) Put(key, val []byte) error {
-	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.WriteTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.WriteTimeout.Duration)
 	defer cancel()
 	tx, err := t.client.Begin(ctx)
 	if err != nil {
