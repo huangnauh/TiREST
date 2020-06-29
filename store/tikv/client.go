@@ -3,6 +3,7 @@ package tikv
 import (
 	"bytes"
 	"context"
+	"github.com/sirupsen/logrus"
 	tikvConfig "github.com/tikv/client-go/config"
 	"github.com/tikv/client-go/key"
 	"github.com/tikv/client-go/txnkv"
@@ -18,6 +19,7 @@ const DBName = "tikv"
 type TiKV struct {
 	client *txnkv.Client
 	conf   *config.Config
+	log    *logrus.Entry
 }
 
 type Driver struct {
@@ -34,13 +36,16 @@ func (d Driver) Name() string {
 func (d Driver) Open(conf *config.Config) (store.DB, error) {
 	tikvConfig := tikvConfig.Default()
 	tikvConfig.Txn.TsoSlowThreshold = 100 * time.Millisecond
-	client, err := txnkv.NewClient(context.TODO(), conf.Store.PdAddresses, tikvConfig)
+	ctx, cancel := context.WithTimeout(context.Background(), conf.Store.ReadTimeout.Duration)
+	defer cancel()
+	client, err := txnkv.NewClient(ctx, conf.Store.PdAddresses, tikvConfig)
 	if err != nil {
 		return nil, err
 	}
 	return &TiKV{
 		client: client,
 		conf:   conf,
+		log:    logrus.WithFields(logrus.Fields{"worker": DBName}),
 	}, nil
 }
 
@@ -106,17 +111,19 @@ func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte) error {
 	v, err := tx.Get(ctx, key)
 	if err == kv.ErrNotExist {
 		if len(oldVal) > 0 {
+			t.log.Errorf("%s cas has old but not in db", key)
 			return xerror.ErrCheckAndSetFailed
 		}
 	} else if err != nil {
 		return xerror.ErrGetKVFailed
 	} else {
 		if !bytes.Equal(oldVal, v) {
+			t.log.Errorf("%s cas old not same %s, %s", key, oldVal, v)
 			return xerror.ErrCheckAndSetFailed
 		}
 	}
 
-	if len(newVal) > 0 {
+	if len(newVal) == 0 {
 		err = tx.Delete(key)
 	} else {
 		err = tx.Set(key, newVal)

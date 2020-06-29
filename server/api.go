@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 	"gitlab.s.upyun.com/platform/tikv-proxy/model"
 	"gitlab.s.upyun.com/platform/tikv-proxy/store"
 	"gitlab.s.upyun.com/platform/tikv-proxy/utils"
@@ -38,7 +37,7 @@ func (s *Server) Get(c *gin.Context) {
 	}
 	v, err := s.store.Get(key, opts)
 	if err == xerror.ErrNotExists {
-		c.JSON(http.StatusNotFound, nil)
+		c.Writer.WriteHeader(http.StatusNotFound)
 	} else if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	} else {
@@ -57,14 +56,13 @@ func (s *Server) CheckAndPut(c *gin.Context) {
 
 	entry, err := ioutil.ReadAll(c.Request.Body)
 	if err != nil {
-		logrus.Errorf("read body failed: %s", err)
+		s.log.Errorf("read body failed: %s", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	err = s.store.CheckAndPut(key, entry)
 	if err != nil {
-		logrus.Errorf("cas failed: %s", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -73,7 +71,7 @@ func (s *Server) CheckAndPut(c *gin.Context) {
 func (s *Server) List(c *gin.Context) {
 	body, err := ioutil.ReadAll(c.Request.Body)
 	if err != nil {
-		logrus.Errorf("read body failed: %s", err)
+		s.log.Errorf("read body failed: %s", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -103,7 +101,6 @@ func (s *Server) List(c *gin.Context) {
 
 	keyEntry, err := s.store.List(l.Start, l.End, l.Limit, opts)
 	if err != nil {
-		s.log.Errorf("list failed, %s", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	} else {

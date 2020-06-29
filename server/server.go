@@ -72,6 +72,7 @@ func (s *Server) registerRoutes() error {
 	api := s.router.Group(path.Join("/api", version.API))
 	api.GET("/meta/*key", s.Get)
 	api.PUT("/meta/*key", s.CheckAndPut)
+	api.POST("/meta/*key", s.CheckAndPut)
 	api.GET("/list/", s.List)
 	api.GET("/config/", s.GetConfig)
 	api.GET("/health/", s.Health)
@@ -84,26 +85,28 @@ func (s *Server) Start() {
 		s.log.Errorf("register routes err, %s", err)
 		return
 	}
+
+	go func() {
+		s.store.Open()
+	}()
+
 	s.log.Infof("Serving HTTP on %s port %d", s.conf.Server.HttpHost, s.conf.Server.HttpPort)
 	err = s.server.ListenAndServe()
 	if err != nil {
-		s.log.Errorf("listen err, %s", err)
 		return
 	}
-	err = s.store.Open()
-	if err != nil {
-		s.log.Errorf("register routes err, %s", err)
-		return
-	}
+
 }
 
 func (s *Server) Close() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+	logrus.Infof("shutdown server")
 	err := s.server.Shutdown(ctx)
 	if err != nil {
 		logrus.Errorf("shutdown failed %s", err)
 	}
+	logrus.Infof("shutdown store")
 	err = s.store.Close()
 	if err != nil {
 		logrus.Errorf("store close failed %s", err)

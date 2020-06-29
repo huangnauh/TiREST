@@ -9,7 +9,7 @@ type TOML struct {
 	Data interface{}
 }
 
-var tomlContentType = []string{"application/x-toml; charset=utf-8"}
+var tomlContentType = []string{"text/toml; charset=utf-8"}
 
 func (r TOML) Render(w http.ResponseWriter) error {
 	r.WriteContentType(w)

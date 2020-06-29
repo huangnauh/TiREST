@@ -15,7 +15,9 @@ type Duration struct {
 
 type Connector struct {
 	Name            string    `toml:"name"`
+	EnableProducer  bool      `toml:"enable-producer"`
 	BrokerList      []string  `toml:"broker-list"`
+	FetchMetadata   bool      `toml:"fetch-metadata"`
 	Retry           int       `toml:"entry"`
 	BackOff         *Duration `toml:"back-off"`
 	MaxBackOff      *Duration `toml:"max-back-off"`
@@ -80,6 +82,7 @@ func DefaultConfig() *Config {
 	return &Config{
 		Store: Store{
 			Name:         "tikv",
+			Path:         "tikv://127.0.0.1:2379",
 			PdAddresses:  []string{"127.0.0.1:2379"},
 			ReadTimeout:  &Duration{10 * time.Second},
 			WriteTimeout: &Duration{10 * time.Second},
@@ -97,7 +100,9 @@ func DefaultConfig() *Config {
 		},
 		Connector: Connector{
 			Name:            "kafka",
+			EnableProducer:  false,
 			BrokerList:      []string{"127.0.0.1:2379"},
+			FetchMetadata:   true,
 			Retry:           10000,
 			BackOff:         &Duration{250 * time.Millisecond},
 			MaxBackOff:      &Duration{time.Minute},

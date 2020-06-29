@@ -10,6 +10,7 @@ import (
 	"gitlab.s.upyun.com/platform/tikv-proxy/log"
 	"gitlab.s.upyun.com/platform/tikv-proxy/store"
 	"gitlab.s.upyun.com/platform/tikv-proxy/version"
+	"os"
 	"time"
 )
 
@@ -45,30 +46,13 @@ func (d Driver) Name() string {
 }
 
 func (d Driver) Open(conf *config.Config) (store.Connector, error) {
-	c := sarama.NewConfig()
-
-	backoff := func(retries, maxRetries int) time.Duration {
-		b := conf.Connector.BackOff.Duration * time.Duration(retries+1)
-		if b > conf.Connector.MaxBackOff.Duration {
-			b = conf.Connector.MaxBackOff.Duration
-		}
-		return conf.Connector.MaxBackOff.Duration
-	}
-	c.Metadata.Retry.Max = conf.Connector.Retry
-	c.Metadata.Retry.BackoffFunc = backoff
-
-	c.Producer.RequiredAcks = sarama.WaitForLocal       // Only wait for the leader to ack
-	c.Producer.Flush.Frequency = 500 * time.Millisecond // Flush batches every 500ms
-	c.Producer.Retry.Max = conf.Connector.Retry
-	c.Producer.Retry.BackoffFunc = backoff
 
 	l := logrus.WithFields(logrus.Fields{
 		"worker": "kafka connector",
 	})
 
-	producer, err := sarama.NewAsyncProducer(conf.Connector.BrokerList, c)
-	if err != nil {
-		l.Errorf("Failed to start producer, %s", err)
+	if err := os.MkdirAll(conf.Connector.QueueDataPath, 0755); err != nil {
+		l.Errorf("Failed to mkdir, %s", err)
 		return nil, err
 	}
 	queue := diskqueue.New(version.APP, conf.Connector.QueueDataPath,
@@ -76,14 +60,41 @@ func (d Driver) Open(conf *config.Config) (store.Connector, error) {
 		conf.Connector.SyncEvery, conf.Connector.SyncTimeout.Duration, log.NewLogFunc(l))
 
 	conn := &Connector{
-		producer:  producer,
 		queue:     queue,
 		log:       l,
 		writeChan: make(chan store.KeyEntry, MaxMessage),
 		conf:      conf,
 	}
-	go conn.runProducer()
+
 	go conn.runQueue()
+
+	if conf.Connector.EnableProducer {
+		sarama.Logger = l
+		c := sarama.NewConfig()
+
+		backoff := func(retries, maxRetries int) time.Duration {
+			b := conf.Connector.BackOff.Duration * time.Duration(retries+1)
+			if b > conf.Connector.MaxBackOff.Duration {
+				b = conf.Connector.MaxBackOff.Duration
+			}
+			return conf.Connector.MaxBackOff.Duration
+		}
+		c.Metadata.Full = conf.Connector.FetchMetadata
+		c.Metadata.Retry.Max = conf.Connector.Retry
+		c.Metadata.Retry.BackoffFunc = backoff
+
+		c.Producer.RequiredAcks = sarama.WaitForLocal       // Only wait for the leader to ack
+		c.Producer.Flush.Frequency = 500 * time.Millisecond // Flush batches every 500ms
+		c.Producer.Retry.Max = conf.Connector.Retry
+		c.Producer.Retry.BackoffFunc = backoff
+		producer, err := sarama.NewAsyncProducer(conf.Connector.BrokerList, c)
+		if err != nil {
+			l.Errorf("Failed to start producer, %s", err)
+			return nil, err
+		}
+		conn.producer = producer
+		go conn.runProducer()
+	}
 	return conn, nil
 }
 
@@ -117,6 +128,10 @@ func (c *Connector) runQueue() {
 			err := c.putQueue(msg)
 			if err != nil {
 				c.log.Errorf("put queue failed, %s", err)
+				if !c.conf.Connector.EnableProducer {
+					continue
+				}
+
 				input := &sarama.ProducerMessage{
 					Topic: c.conf.Connector.Topic,
 					Key:   sarama.ByteEncoder(msg.Key),
@@ -173,8 +188,10 @@ func (c *Connector) Close() {
 	if err != nil {
 		c.log.Errorf("queue close failed, %s", err)
 	}
-	err = c.producer.Close()
-	if err != nil {
-		c.log.Errorf("producer close failed, %s", err)
+	if c.conf.Connector.EnableProducer {
+		err = c.producer.Close()
+		if err != nil {
+			c.log.Errorf("producer close failed, %s", err)
+		}
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/sirupsen/logrus"
 	"gitlab.s.upyun.com/platform/tikv-proxy/config"
+	"gitlab.s.upyun.com/platform/tikv-proxy/utils"
 	"gitlab.s.upyun.com/platform/tikv-proxy/xerror"
 )
 
@@ -43,8 +44,8 @@ type Store struct {
 }
 
 type Log struct {
-	Old []byte
-	New []byte
+	Old string `json:"old"`
+	New string `json:"new"`
 }
 
 type DBDriver interface {
@@ -93,28 +94,35 @@ func NewStore(conf *config.Config) (*Store, error) {
 	}, nil
 }
 
-func (s *Store) Open() error {
-	cDriver := cDrivers[s.conf.Connector.Name]
-	connector, err := cDriver.Open(s.conf)
-	if err != nil {
-		return err
-	}
-	s.connector = connector
+func (s *Store) Open() {
+	go func() {
+		cDriver := cDrivers[s.conf.Connector.Name]
+		connector, err := cDriver.Open(s.conf)
+		if err != nil {
+			s.log.Errorf("open connector %s failed, %s", s.conf.Connector.Name, err)
+		} else {
+			s.connector = connector
+		}
+	}()
 
-	dDriver := dDrivers[s.conf.Store.Name]
-	db, err := dDriver.Open(s.conf)
-	if err != nil {
-		return err
-	}
-	s.db = db
-	return nil
+	go func() {
+		dDriver := dDrivers[s.conf.Store.Name]
+		db, err := dDriver.Open(s.conf)
+		if err != nil {
+			s.log.Errorf("open db %s failed, %s", s.conf.Store.Name, err)
+		} else {
+			s.db = db
+		}
+	}()
 }
 
 func (s *Store) Close() error {
 	if s.connector != nil {
+		logrus.Infof("close connector %s", s.conf.Connector.Name)
 		s.connector.Close()
 	}
 	if s.db != nil {
+		logrus.Infof("close db %s", s.conf.Store.Name)
 		return s.db.Close()
 	}
 	return nil
@@ -131,7 +139,13 @@ func (s *Store) Get(key []byte, opt Option) ([]byte, error) {
 	if s.db == nil {
 		return nil, xerror.ErrNotExists
 	}
-	return s.db.Get(key, opt)
+	v, err := s.db.Get(key, opt)
+	if err != nil {
+		s.log.Errorf("get key %s failed, %s", key, err)
+		return nil, err
+	}
+	s.log.Debugf("key %s value %s", key, v)
+	return v, nil
 }
 
 func (s *Store) CheckAndPut(key []byte, entry []byte) error {
@@ -151,7 +165,8 @@ func (s *Store) CheckAndPut(key []byte, entry []byte) error {
 		return err
 	}
 
-	err = s.db.CheckAndPut(key, l.Old, l.New)
+	s.log.Debugf("key %s old %s new %s", key, l.Old, l.New)
+	err = s.db.CheckAndPut(key, utils.S2B(l.Old), utils.S2B(l.New))
 	if err != nil {
 		s.log.Errorf("key %s cas failed, %s", key, err)
 		return err

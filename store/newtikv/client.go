@@ -3,6 +3,8 @@ package newtikv
 import (
 	"bytes"
 	"context"
+	"github.com/sirupsen/logrus"
+
 	//tiConfig "github.com/pingcap/tidb/config"
 	"github.com/pingcap/tidb/kv"
 	"github.com/pingcap/tidb/store/tikv"
@@ -16,6 +18,7 @@ const DBName = "newtikv"
 type TiKV struct {
 	client kv.Storage
 	conf   *config.Config
+	log    *logrus.Entry
 }
 
 type Driver struct {
@@ -52,6 +55,7 @@ func (d Driver) Open(conf *config.Config) (store.DB, error) {
 	return &TiKV{
 		client: s,
 		conf:   conf,
+		log:    logrus.WithFields(logrus.Fields{"worker": DBName}),
 	}, nil
 }
 
