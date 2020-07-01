@@ -10,16 +10,15 @@ import (
 
 func init() {
 	registerCommand(cli.Command{
-		Name: "init",
+		Name:  "init",
+		Usage: "init config",
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  "config, conf",
 				Usage: "init config path",
 			},
 		},
-		Action: func(c *cli.Context) error {
-			return runInit(c)
-		},
+		Action: runInit,
 	})
 }
 

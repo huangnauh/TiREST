@@ -2,7 +2,7 @@ enable-tracing = true
 
 [store]
   name = "tikv"
-  path = "127.0.0.1:2379"
+  path = "tikv://127.0.0.1:2379"
   pd-address = ["127.0.0.1:2379"]
   read-timeout = "10s"
   list-timeout = "1m0s"
@@ -20,9 +20,10 @@ enable-tracing = true
 
 [connector]
   name = "kafka"
-  fetch-metadata = false
-  enable-producer = false
+  enable-producer = true
+  debug-producer = false
   broker-list = ["127.0.0.1:2379"]
+  fetch-metadata = true
   entry = 10000
   topic = "tikvmeta"
   queue-data-path = "./queue/"

@@ -23,9 +23,7 @@ func init() {
 				Usage: "proxy config",
 			},
 		},
-		Action: func(c *cli.Context) error {
-			return runServer(c)
-		},
+		Action: runServer,
 	})
 }
 

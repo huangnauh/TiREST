@@ -16,6 +16,7 @@ type Duration struct {
 type Connector struct {
 	Name            string    `toml:"name"`
 	EnableProducer  bool      `toml:"enable-producer"`
+	DebugProducer   bool      `toml:"debug-producer"`
 	BrokerList      []string  `toml:"broker-list"`
 	FetchMetadata   bool      `toml:"fetch-metadata"`
 	Retry           int       `toml:"entry"`
@@ -100,7 +101,8 @@ func DefaultConfig() *Config {
 		},
 		Connector: Connector{
 			Name:            "kafka",
-			EnableProducer:  false,
+			EnableProducer:  true,
+			DebugProducer:   false,
 			BrokerList:      []string{"127.0.0.1:2379"},
 			FetchMetadata:   true,
 			Retry:           10000,

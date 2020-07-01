@@ -71,7 +71,6 @@ func (d Driver) Open(conf *config.Config) (store.Connector, error) {
 	if conf.Connector.EnableProducer {
 		sarama.Logger = l
 		c := sarama.NewConfig()
-
 		backoff := func(retries, maxRetries int) time.Duration {
 			b := conf.Connector.BackOff.Duration * time.Duration(retries+1)
 			if b > conf.Connector.MaxBackOff.Duration {
@@ -79,10 +78,14 @@ func (d Driver) Open(conf *config.Config) (store.Connector, error) {
 			}
 			return conf.Connector.MaxBackOff.Duration
 		}
+		c.ClientID = version.APP
 		c.Metadata.Full = conf.Connector.FetchMetadata
 		c.Metadata.Retry.Max = conf.Connector.Retry
 		c.Metadata.Retry.BackoffFunc = backoff
 
+		if conf.Connector.DebugProducer {
+			c.Producer.Return.Successes = true
+		}
 		c.Producer.RequiredAcks = sarama.WaitForLocal       // Only wait for the leader to ack
 		c.Producer.Flush.Frequency = 500 * time.Millisecond // Flush batches every 500ms
 		c.Producer.Retry.Max = conf.Connector.Retry
@@ -158,6 +161,12 @@ func (c *Connector) runQueue() {
 func (c *Connector) runProducer() {
 	for {
 		select {
+		case success, ok := <-c.producer.Successes():
+			if !ok {
+				return
+			}
+			logrus.Debugf("key %s, partition %d, offset %d",
+				success.Key, success.Partition, success.Offset)
 		case err, ok := <-c.producer.Errors():
 			if !ok {
 				return
