@@ -26,12 +26,8 @@ type Connector struct {
 	writeBuf  bytes.Buffer
 	writeChan chan store.KeyEntry
 	conf      *config.Config
+	cfg       *sarama.Config
 	//TODO: metrics
-	//partitionOffset []struct {
-	//	queued  uint64
-	//	flushed uint64
-	//	sent    uint64
-	//}
 }
 
 type Driver struct {
@@ -69,8 +65,14 @@ func (d Driver) Open(conf *config.Config) (store.Connector, error) {
 	go conn.runQueue()
 
 	if conf.Connector.EnableProducer {
+		var err error
 		sarama.Logger = l
 		c := sarama.NewConfig()
+		c.Version, err = sarama.ParseKafkaVersion(conf.Connector.Version)
+		if err != nil {
+			l.Errorf("Error parsing version: %v", err)
+			return nil, err
+		}
 		backoff := func(retries, maxRetries int) time.Duration {
 			b := conf.Connector.BackOff.Duration * time.Duration(retries+1)
 			if b > conf.Connector.MaxBackOff.Duration {
@@ -82,6 +84,11 @@ func (d Driver) Open(conf *config.Config) (store.Connector, error) {
 		c.Metadata.Full = conf.Connector.FetchMetadata
 		c.Metadata.Retry.Max = conf.Connector.Retry
 		c.Metadata.Retry.BackoffFunc = backoff
+		conn.cfg = c
+		err = conn.CreateTopic()
+		if err != nil {
+			return nil, err
+		}
 
 		if conf.Connector.DebugProducer {
 			c.Producer.Return.Successes = true
@@ -99,6 +106,43 @@ func (d Driver) Open(conf *config.Config) (store.Connector, error) {
 		go conn.runProducer()
 	}
 	return conn, nil
+}
+
+func (c *Connector) CreateTopic() error {
+	if !c.cfg.Version.IsAtLeast(sarama.V1_1_0_0) {
+		return nil
+	}
+
+	admin, err := sarama.NewClusterAdmin(c.conf.Connector.BrokerList, c.cfg)
+	if err != nil {
+		c.log.Errorf("create cluster admin failed, %s", err)
+		return err
+	}
+	topics, err := admin.ListTopics()
+	if err != nil {
+		c.log.Errorf("list topics failed, %s", err)
+		return err
+	}
+	topicDetail, exist := topics[c.conf.Connector.Topic]
+	if exist {
+		c.log.Infof("get topic %s, partition_num %d, config partition_num %d",
+			c.conf.Connector.Topic, topicDetail.NumPartitions, c.conf.Connector.PartitionNum)
+	} else {
+		c.log.Infof("create topic %s partition_num %d",
+			c.conf.Connector.Topic, c.conf.Connector.PartitionNum)
+		err := admin.CreateTopic(c.conf.Connector.Topic, &sarama.TopicDetail{
+			NumPartitions:     c.conf.Connector.PartitionNum,
+			ReplicationFactor: 3,
+		}, false)
+		if err != nil {
+			return err
+		}
+	}
+	err = admin.Close()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *Connector) putQueue(msg store.KeyEntry) error {
@@ -131,7 +175,7 @@ func (c *Connector) runQueue() {
 			err := c.putQueue(msg)
 			if err != nil {
 				c.log.Errorf("put queue failed, %s", err)
-				if !c.conf.Connector.EnableProducer {
+				if c.producer == nil {
 					continue
 				}
 
@@ -197,10 +241,11 @@ func (c *Connector) Close() {
 	if err != nil {
 		c.log.Errorf("queue close failed, %s", err)
 	}
-	if c.conf.Connector.EnableProducer {
-		err = c.producer.Close()
-		if err != nil {
-			c.log.Errorf("producer close failed, %s", err)
-		}
+	if c.producer == nil {
+		return
+	}
+	err = c.producer.Close()
+	if err != nil {
+		c.log.Errorf("producer close failed, %s", err)
 	}
 }

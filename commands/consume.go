@@ -33,11 +33,6 @@ func init() {
 				Usage: "consumer group definition",
 				Value: "test",
 			},
-			cli.StringFlag{
-				Name:  "version, v",
-				Usage: "cluster version",
-				Value: "0.9.0.1",
-			},
 		},
 		Action: runConsumer,
 	})
@@ -56,8 +51,7 @@ func runConsumer(c *cli.Context) error {
 	cf := sarama.NewConfig()
 	cf.ClientID = "tikv-consumer"
 
-	ver := c.String("version")
-	cf.Version, err = sarama.ParseKafkaVersion(ver)
+	cf.Version, err = sarama.ParseKafkaVersion(conf.Connector.Version)
 	if err != nil {
 		log.Panicf("Error parsing version: %v", err)
 	}

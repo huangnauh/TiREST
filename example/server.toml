@@ -20,12 +20,14 @@ enable-tracing = true
 
 [connector]
   name = "kafka"
-  enable-producer = true
+  version = "0.10.0.0"
+  enable-producer = false
   debug-producer = false
   broker-list = ["127.0.0.1:2379"]
-  fetch-metadata = true
+  fetch-metadata = false
   entry = 10000
   topic = "tikvmeta"
+  partition-num = 32
   queue-data-path = "./queue/"
   mem-queue-size = 10000
   max-bytes-per-file = 104857600

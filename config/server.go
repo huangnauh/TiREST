@@ -15,6 +15,7 @@ type Duration struct {
 
 type Connector struct {
 	Name            string    `toml:"name"`
+	Version         string    `toml:"version"`
 	EnableProducer  bool      `toml:"enable-producer"`
 	DebugProducer   bool      `toml:"debug-producer"`
 	BrokerList      []string  `toml:"broker-list"`
@@ -23,6 +24,7 @@ type Connector struct {
 	BackOff         *Duration `toml:"back-off"`
 	MaxBackOff      *Duration `toml:"max-back-off"`
 	Topic           string    `toml:"topic"`
+	PartitionNum    int32     `toml:"partition-num"`
 	QueueDataPath   string    `toml:"queue-data-path"`
 	MemQueueSize    int64     `toml:"mem-queue-size"`
 	MaxBytesPerFile int64     `toml:"max-bytes-per-file"`
@@ -101,6 +103,7 @@ func DefaultConfig() *Config {
 		},
 		Connector: Connector{
 			Name:            "kafka",
+			Version:         "0.9.0.1",
 			EnableProducer:  true,
 			DebugProducer:   false,
 			BrokerList:      []string{"127.0.0.1:2379"},
@@ -109,6 +112,7 @@ func DefaultConfig() *Config {
 			BackOff:         &Duration{250 * time.Millisecond},
 			MaxBackOff:      &Duration{time.Minute},
 			Topic:           "tikvmeta",
+			PartitionNum:    512,
 			QueueDataPath:   "./queue/",
 			MemQueueSize:    10000,
 			MaxBytesPerFile: 100 * 1024 * 1024,
