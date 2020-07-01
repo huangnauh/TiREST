@@ -55,6 +55,7 @@ func runConsumer(c *cli.Context) error {
 	if err != nil {
 		log.Panicf("Error parsing version: %v", err)
 	}
+	logrus.Infof("version %s", cf.Version)
 	if oldest {
 		cf.Consumer.Offsets.Initial = sarama.OffsetOldest
 	}

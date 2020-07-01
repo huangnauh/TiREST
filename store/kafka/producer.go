@@ -118,6 +118,13 @@ func (c *Connector) CreateTopic() error {
 		c.log.Errorf("create cluster admin failed, %s", err)
 		return err
 	}
+
+	brokers, controllerID, err := admin.DescribeCluster()
+	if err != nil {
+		c.log.Errorf("admin get cluster failed, %s", err)
+		return err
+	}
+	c.log.Infof("%d brokers controller id %d", len(brokers), controllerID)
 	topics, err := admin.ListTopics()
 	if err != nil {
 		c.log.Errorf("list topics failed, %s", err)
@@ -125,14 +132,19 @@ func (c *Connector) CreateTopic() error {
 	}
 	topicDetail, exist := topics[c.conf.Connector.Topic]
 	if exist {
-		c.log.Infof("get topic %s, partition_num %d, config partition_num %d",
-			c.conf.Connector.Topic, topicDetail.NumPartitions, c.conf.Connector.PartitionNum)
+		c.log.Infof("get topic %s, partition_num %d, config partition_num %d, replica %d",
+			c.conf.Connector.Topic, topicDetail.NumPartitions,
+			c.conf.Connector.PartitionNum, topicDetail.ReplicationFactor)
 	} else {
-		c.log.Infof("create topic %s partition_num %d",
-			c.conf.Connector.Topic, c.conf.Connector.PartitionNum)
+		replica := int16(len(brokers))
+		if replica > 3 {
+			replica = 3
+		}
+		c.log.Infof("create topic %s partition_num %d replica %d",
+			c.conf.Connector.Topic, c.conf.Connector.PartitionNum, replica)
 		err := admin.CreateTopic(c.conf.Connector.Topic, &sarama.TopicDetail{
 			NumPartitions:     c.conf.Connector.PartitionNum,
-			ReplicationFactor: 3,
+			ReplicationFactor: replica,
 		}, false)
 		if err != nil {
 			return err
