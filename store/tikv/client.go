@@ -163,3 +163,35 @@ func (t *TiKV) Put(key, val []byte) error {
 	}
 	return nil
 }
+
+func (t *TiKV) BatchDelete(start []byte, end []byte) (int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.BatchDeleteTimeout.Duration)
+	defer cancel()
+	tx, err := t.client.Begin(ctx)
+	if err != nil {
+		return 0, xerror.ErrGetTimestampFailed
+	}
+	tx.SetOption(kv.KeyOnly, true)
+
+	it, err := tx.Iter(ctx, key.Key(start), key.Key(end))
+	if err != nil {
+		return 0, xerror.ErrListKVFailed
+	}
+	defer it.Close()
+
+	count := 0
+	for it.Valid() {
+		k := it.Key()
+		t.log.Debugf("delete key %s", k)
+		err = tx.Delete(k)
+		if err != nil {
+			return count, xerror.ErrSetKVFailed
+		}
+		count++
+		err = it.Next(ctx)
+		if err != nil {
+			return count, xerror.ErrListKVFailed
+		}
+	}
+	return count, nil
+}

@@ -181,3 +181,35 @@ func (t *TiKV) Put(key, val []byte) error {
 	}
 	return nil
 }
+
+func (t *TiKV) BatchDelete(start []byte, end []byte) (int, error) {
+	tx, err := t.client.Begin()
+	if err != nil {
+		return 0, xerror.ErrGetTimestampFailed
+	}
+
+	it, err := tx.Iter(kv.Key(start), kv.Key(end))
+	if err != nil {
+		return 0, xerror.ErrListKVFailed
+	}
+	defer it.Close()
+	tx.SetOption(kv.KeyOnly, true)
+	snapshot := tx.GetSnapshot()
+	snapshot.SetOption(kv.ReplicaRead, kv.ReplicaReadFollower)
+
+	count := 0
+	for it.Valid() {
+		key := it.Key()
+		t.log.Debugf("delete key %s", key)
+		err = tx.Delete(key)
+		if err != nil {
+			return count, xerror.ErrSetKVFailed
+		}
+		count++
+		err = it.Next()
+		if err != nil {
+			return count, xerror.ErrListKVFailed
+		}
+	}
+	return count, nil
+}

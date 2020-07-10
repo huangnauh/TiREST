@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
@@ -12,6 +11,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 func (s *Server) checkKey(key string) ([]byte, error) {
@@ -27,7 +27,7 @@ func (s *Server) Get(c *gin.Context) {
 	keyStr := c.Param("key")
 	key, err := s.checkKey(keyStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid block id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid key"})
 		return
 	}
 
@@ -42,7 +42,7 @@ func (s *Server) Get(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	} else {
 		c.Header("Content-Length", strconv.Itoa(len(v)))
-		c.Data(200, "application/octet-stream", v)
+		c.Data(http.StatusOK, "application/octet-stream", v)
 	}
 }
 
@@ -50,7 +50,7 @@ func (s *Server) CheckAndPut(c *gin.Context) {
 	keyStr := c.Param("key")
 	key, err := s.checkKey(keyStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid block id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid key"})
 		return
 	}
 
@@ -66,25 +66,16 @@ func (s *Server) CheckAndPut(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	c.Status(http.StatusNoContent)
 }
 
 func (s *Server) List(c *gin.Context) {
-	body, err := ioutil.ReadAll(c.Request.Body)
-	if err != nil {
-		s.log.Errorf("read body failed: %s", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
 	l := &model.List{}
-	err = json.Unmarshal(body, &l)
-	if err != nil {
-		s.log.Errorf("list invalid, %s", err)
+	if err := c.ShouldBindHeader(&l); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	if bytes.Compare(l.Start, l.End) >= 0 {
+	if strings.Compare(l.Start, l.End) >= 0 {
 		s.log.Errorf("list start %s > end %s", l.Start, l.End)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "start end invalid"})
 		return
@@ -99,7 +90,7 @@ func (s *Server) List(c *gin.Context) {
 		opts = store.KeyOnlyOption
 	}
 
-	keyEntry, err := s.store.List(l.Start, l.End, l.Limit, opts)
+	keyEntry, err := s.store.List(utils.S2B(l.Start), utils.S2B(l.End), l.Limit, opts)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -111,12 +102,31 @@ func (s *Server) List(c *gin.Context) {
 			return
 		}
 		c.Header("Content-Length", strconv.Itoa(len(jsonBytes)))
-		c.Data(200, "application/json", jsonBytes)
+		c.Data(http.StatusOK, "application/json", jsonBytes)
 	}
 }
 
+func (s *Server) AsyncBatchDelete(c *gin.Context) {
+	l := &model.List{}
+	if err := c.ShouldBindJSON(&l); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if strings.Compare(l.Start, l.End) >= 0 {
+		s.log.Errorf("list start %s > end %s", l.Start, l.End)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "start end invalid"})
+		return
+	}
+
+	go func() {
+		s.store.BatchDelete(utils.S2B(l.Start), utils.S2B(l.End))
+	}()
+	c.Status(http.StatusNoContent)
+}
+
 func (s *Server) GetConfig(c *gin.Context) {
-	c.Render(200, utils.TOML{Data: s.conf})
+	c.Render(http.StatusOK, utils.TOML{Data: s.conf})
 }
 
 func (s *Server) Health(c *gin.Context) {
@@ -126,5 +136,5 @@ func (s *Server) Health(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.Writer.WriteHeader(http.StatusNoContent)
+	c.Status(http.StatusNoContent)
 }

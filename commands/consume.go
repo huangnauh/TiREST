@@ -5,7 +5,7 @@ import (
 	"github.com/Shopify/sarama"
 	"github.com/bsm/sarama-cluster"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	"gitlab.s.upyun.com/platform/tikv-proxy/config"
 	"log"
 	"os"
@@ -15,23 +15,26 @@ import (
 )
 
 func init() {
-	registerCommand(cli.Command{
+	registerCommand(&cli.Command{
 		Name:  "consume",
 		Usage: "handle meta log",
 		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:  "config, c",
-				Usage: "proxy config",
-				Value: "./server.toml",
+			&cli.StringFlag{
+				Name:    "config",
+				Aliases: []string{"c"},
+				Usage:   "proxy config",
+				Value:   "./server.toml",
 			},
-			cli.BoolFlag{
-				Name:  "oldest, o",
-				Usage: "consumer consume initial offset from oldest",
+			&cli.BoolFlag{
+				Name:    "oldest",
+				Aliases: []string{"o"},
+				Usage:   "consumer consume initial offset from oldest",
 			},
-			cli.StringFlag{
-				Name:  "group, g",
-				Usage: "consumer group definition",
-				Value: "test",
+			&cli.StringFlag{
+				Name:    "group",
+				Aliases: []string{"g"},
+				Usage:   "consumer group definition",
+				Value:   "test",
 			},
 		},
 		Action: runConsumer,

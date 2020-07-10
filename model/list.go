@@ -1,8 +1,8 @@
 package model
 
 type List struct {
-	Start   []byte `json:"start"`
-	End     []byte `json:"end"`
-	Limit   int    `json:"limit"`
-	KeyOnly bool   `json:"key-only"`
+	Start   string `header:"X-Start" json:"start"`
+	End     string `header:"X-End" json:"end"`
+	Limit   int    `header:"X-Limit" json:"limit"`
+	KeyOnly bool   `header:"X-Key-Only" json:"key-only"`
 }

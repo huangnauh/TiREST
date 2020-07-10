@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	"gitlab.s.upyun.com/platform/tikv-proxy/commands"
 	_ "gitlab.s.upyun.com/platform/tikv-proxy/store/kafka"
 	//_ "gitlab.s.upyun.com/platform/tikv-proxy/store/newtikv"

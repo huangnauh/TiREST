@@ -2,20 +2,21 @@ package commands
 
 import (
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	"gitlab.s.upyun.com/platform/tikv-proxy/config"
 	"gitlab.s.upyun.com/platform/tikv-proxy/xerror"
 	"os"
 )
 
 func init() {
-	registerCommand(cli.Command{
+	registerCommand(&cli.Command{
 		Name:  "init",
 		Usage: "init config",
 		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:  "config, conf",
-				Usage: "init config path",
+			&cli.StringFlag{
+				Name:    "config",
+				Aliases: []string{"conf"},
+				Usage:   "init config path",
 			},
 		},
 		Action: runInit,

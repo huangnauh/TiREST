@@ -11,9 +11,10 @@ import (
 
 type DB interface {
 	Close() error
+	Put(key, val []byte) error
+	BatchDelete(start []byte, end []byte) (int, error)
 	Get(key []byte, option Option) ([]byte, error)
 	CheckAndPut(key, oldVal, newVal []byte) error
-	Put(key, val []byte) error
 	List(start, end []byte, limit int, option Option) ([]KeyEntry, error)
 }
 
@@ -189,4 +190,17 @@ func (s *Store) List(start, end []byte, limit int, option Option) ([]KeyEntry, e
 		return nil, err
 	}
 	return res, nil
+}
+
+func (s *Store) BatchDelete(start, end []byte) (int, error) {
+	if s.db == nil {
+		return 0, xerror.ErrNotExists
+	}
+	deleted, err := s.db.BatchDelete(start, end)
+	if err != nil {
+		s.log.Errorf("deleted %d (%s-%s) err %s", deleted, start, end, err)
+		return deleted, err
+	}
+	s.log.Infof("deleted %d (%s-%s)", deleted, start, end)
+	return deleted, nil
 }

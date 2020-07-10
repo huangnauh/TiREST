@@ -3,7 +3,7 @@ package commands
 import (
 	"fmt"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	"gitlab.s.upyun.com/platform/tikv-proxy/config"
 	"gitlab.s.upyun.com/platform/tikv-proxy/log"
 	"gitlab.s.upyun.com/platform/tikv-proxy/middleware"
@@ -14,13 +14,14 @@ import (
 )
 
 func init() {
-	registerCommand(cli.Command{
+	registerCommand(&cli.Command{
 		Name:  "server",
 		Usage: "Run as server",
 		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:  "config, conf",
-				Usage: "proxy config",
+			&cli.StringFlag{
+				Name:    "config",
+				Aliases: []string{"conf"},
+				Usage:   "proxy config",
 			},
 		},
 		Action: runServer,

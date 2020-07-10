@@ -35,12 +35,13 @@ type Connector struct {
 }
 
 type Store struct {
-	Name         string    `toml:"name"`
-	Path         string    `toml:"path"`
-	PdAddresses  []string  `toml:"pd-address"`
-	ReadTimeout  *Duration `toml:"read-timeout"`
-	ListTimeout  *Duration `toml:"list-timeout"`
-	WriteTimeout *Duration `toml:"write-timeout"`
+	Name               string    `toml:"name"`
+	Path               string    `toml:"path"`
+	PdAddresses        []string  `toml:"pd-address"`
+	ReadTimeout        *Duration `toml:"read-timeout"`
+	ListTimeout        *Duration `toml:"list-timeout"`
+	WriteTimeout       *Duration `toml:"write-timeout"`
+	BatchDeleteTimeout *Duration `toml:"batch-delete-timeout"`
 }
 
 func (d *Duration) UnmarshalText(text []byte) error {
@@ -84,12 +85,13 @@ type Config struct {
 func DefaultConfig() *Config {
 	return &Config{
 		Store: Store{
-			Name:         "tikv",
-			Path:         "tikv://127.0.0.1:2379",
-			PdAddresses:  []string{"127.0.0.1:2379"},
-			ReadTimeout:  &Duration{10 * time.Second},
-			WriteTimeout: &Duration{10 * time.Second},
-			ListTimeout:  &Duration{60 * time.Second},
+			Name:               "tikv",
+			Path:               "tikv://127.0.0.1:2379",
+			PdAddresses:        []string{"127.0.0.1:2379"},
+			ReadTimeout:        &Duration{10 * time.Second},
+			WriteTimeout:       &Duration{10 * time.Second},
+			ListTimeout:        &Duration{60 * time.Second},
+			BatchDeleteTimeout: &Duration{24 * time.Hour},
 		},
 		Server: Server{
 			HttpHost:          "127.0.0.1",
