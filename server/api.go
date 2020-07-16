@@ -62,7 +62,10 @@ func (s *Server) CheckAndPut(c *gin.Context) {
 	}
 
 	err = s.store.CheckAndPut(key, entry)
-	if err != nil {
+	if err == xerror.ErrCheckAndSetFailed {
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		return
+	} else if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
