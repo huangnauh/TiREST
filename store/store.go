@@ -12,10 +12,16 @@ import (
 type DB interface {
 	Close() error
 	Put(key, val []byte) error
-	BatchDelete(start []byte, end []byte) (int, error)
-	Get(key []byte, option Option) ([]byte, error)
+	UnsafeDelete(start, end []byte) error
 	CheckAndPut(key, oldVal, newVal []byte) error
-	List(start, end []byte, limit int, option Option) ([]KeyEntry, error)
+	Get(key []byte, option Option) ([]byte, error)
+	BatchDelete(start, end []byte, limit int) (int, error)
+	List(start, end []byte, limit int, option Option) ([]KeyValue, error)
+}
+
+type KeyValue struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
 }
 
 type KeyEntry struct {
@@ -26,6 +32,7 @@ type KeyEntry struct {
 type Option struct {
 	ReplicaRead bool
 	KeyOnly     bool
+	Reverse     bool
 }
 
 var ReplicaReadOption = Option{ReplicaRead: true}
@@ -179,7 +186,7 @@ func (s *Store) CheckAndPut(key []byte, entry []byte) error {
 	return nil
 }
 
-func (s *Store) List(start, end []byte, limit int, option Option) ([]KeyEntry, error) {
+func (s *Store) List(start, end []byte, limit int, option Option) ([]KeyValue, error) {
 	if s.db == nil {
 		return nil, xerror.ErrNotExists
 	}
@@ -192,15 +199,24 @@ func (s *Store) List(start, end []byte, limit int, option Option) ([]KeyEntry, e
 	return res, nil
 }
 
-func (s *Store) BatchDelete(start, end []byte) (int, error) {
+func (s *Store) BatchDelete(start, end []byte, limit int) (int, error) {
 	if s.db == nil {
 		return 0, xerror.ErrNotExists
 	}
-	deleted, err := s.db.BatchDelete(start, end)
+
+	deleted, err := s.db.BatchDelete(start, end, limit)
 	if err != nil {
-		s.log.Errorf("deleted %d (%s-%s) err %s", deleted, start, end, err)
+		s.log.Errorf("deleted %d (%s-%s) limit %d err %s", deleted, start, end, limit, err)
 		return deleted, err
 	}
 	s.log.Infof("deleted %d (%s-%s)", deleted, start, end)
 	return deleted, nil
+}
+
+func (s *Store) UnsafeDelete(start, end []byte) {
+	s.log.Infof("unsafe deleted (%s-%s)", start, end)
+	err := s.db.UnsafeDelete(start, end)
+	if err != nil {
+		s.log.Errorf("unsafe deleted (%s-%s), err %s", start, end, err)
+	}
 }

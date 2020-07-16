@@ -73,7 +73,7 @@ func (s *Server) registerRoutes() error {
 	api.GET("/meta/*key", s.Get)
 	api.PUT("/meta/*key", s.CheckAndPut)
 	api.POST("/meta/*key", s.CheckAndPut)
-	api.DELETE("/meta", s.AsyncBatchDelete)
+	api.DELETE("/list/", s.AsyncBatchDelete)
 	api.GET("/list/", s.List)
 	api.GET("/config/", s.GetConfig)
 	api.GET("/health/", s.Health)

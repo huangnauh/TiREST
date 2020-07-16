@@ -10,6 +10,7 @@ import (
 	"github.com/tikv/client-go/txnkv/kv"
 	"gitlab.s.upyun.com/platform/tikv-proxy/config"
 	"gitlab.s.upyun.com/platform/tikv-proxy/store"
+	"gitlab.s.upyun.com/platform/tikv-proxy/utils"
 	"gitlab.s.upyun.com/platform/tikv-proxy/xerror"
 	"time"
 )
@@ -71,7 +72,7 @@ func (t *TiKV) Get(key []byte, option store.Option) ([]byte, error) {
 	return v, nil
 }
 
-func (t *TiKV) List(start, end []byte, limit int, option store.Option) ([]store.KeyEntry, error) {
+func (t *TiKV) List(start, end []byte, limit int, option store.Option) ([]store.KeyValue, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.ListTimeout.Duration)
 	defer cancel()
 	tx, err := t.client.Begin(ctx)
@@ -88,9 +89,9 @@ func (t *TiKV) List(start, end []byte, limit int, option store.Option) ([]store.
 	}
 	defer it.Close()
 
-	ret := make([]store.KeyEntry, 0)
+	ret := make([]store.KeyValue, 0)
 	for it.Valid() && limit > 0 {
-		ret = append(ret, store.KeyEntry{Key: it.Key(), Entry: it.Value()})
+		ret = append(ret, store.KeyValue{Key: utils.B2S(it.Key()), Value: utils.B2S(it.Value())})
 		limit--
 		err = it.Next(ctx)
 		if err != nil {
@@ -164,7 +165,7 @@ func (t *TiKV) Put(key, val []byte) error {
 	return nil
 }
 
-func (t *TiKV) BatchDelete(start []byte, end []byte) (int, error) {
+func (t *TiKV) BatchDelete(start, end []byte, limit int) (int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.BatchDeleteTimeout.Duration)
 	defer cancel()
 	tx, err := t.client.Begin(ctx)
@@ -185,13 +186,27 @@ func (t *TiKV) BatchDelete(start []byte, end []byte) (int, error) {
 		t.log.Debugf("delete key %s", k)
 		err = tx.Delete(k)
 		if err != nil {
-			return count, xerror.ErrSetKVFailed
+			t.log.Errorf("delete key %s, err: %s", k, err)
+			break
 		}
 		count++
+		if limit > 0 && count >= limit {
+			break
+		}
 		err = it.Next(ctx)
 		if err != nil {
-			return count, xerror.ErrListKVFailed
+			t.log.Errorf("next key %s, err: %s", k, err)
+			break
 		}
 	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return count, xerror.ErrCommitKVFailed
+	}
 	return count, nil
+}
+
+func (t *TiKV) UnsafeDelete(start, end []byte) error {
+	return nil
 }

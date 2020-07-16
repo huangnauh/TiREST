@@ -81,13 +81,17 @@ func (s *Server) List(c *gin.Context) {
 		return
 	}
 
-	if l.Limit < 0 || l.Limit > 10000 {
+	if l.Limit <= 0 || l.Limit > 10000 {
 		l.Limit = 10000
 	}
 
 	opts := store.NoOption
 	if l.KeyOnly {
 		opts = store.KeyOnlyOption
+	}
+
+	if l.Reverse {
+		opts.Reverse = true
 	}
 
 	keyEntry, err := s.store.List(utils.S2B(l.Start), utils.S2B(l.End), l.Limit, opts)
@@ -108,7 +112,7 @@ func (s *Server) List(c *gin.Context) {
 
 func (s *Server) AsyncBatchDelete(c *gin.Context) {
 	l := &model.List{}
-	if err := c.ShouldBindJSON(&l); err != nil {
+	if err := c.ShouldBindHeader(&l); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -119,8 +123,32 @@ func (s *Server) AsyncBatchDelete(c *gin.Context) {
 		return
 	}
 
+	if l.Limit <= 0 || l.Limit > 10000 {
+		l.Limit = 10000
+	}
+
+	if l.Unsafe {
+		go func() {
+			s.store.UnsafeDelete(utils.S2B(l.Start), utils.S2B(l.End))
+		}()
+		c.Status(http.StatusNoContent)
+		return
+	}
+
 	go func() {
-		s.store.BatchDelete(utils.S2B(l.Start), utils.S2B(l.End))
+		count := 0
+		for {
+			deleted, err := s.store.BatchDelete(utils.S2B(l.Start), utils.S2B(l.End), l.Limit)
+			if err != nil {
+				s.log.Errorf("list (%s-%s), deleted %d, err: %s", l.Start, l.End, count, err)
+				return
+			}
+			s.log.Infof("list (%s-%s), deleted %d", l.Start, l.End, count)
+			if deleted < l.Limit {
+				return
+			}
+			count += deleted
+		}
 	}()
 	c.Status(http.StatusNoContent)
 }
