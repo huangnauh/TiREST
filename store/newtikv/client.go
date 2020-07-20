@@ -1,7 +1,6 @@
 package newtikv
 
 import (
-	"bytes"
 	"context"
 	"github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"github.com/pingcap/kvproto/pkg/metapb"
@@ -96,10 +95,10 @@ func (t *TiKV) Close() error {
 	return t.client.Close()
 }
 
-func (t *TiKV) Get(key []byte, option store.Option) ([]byte, error) {
+func (t *TiKV) Get(key []byte, option store.Option) (store.Value, error) {
 	tx, err := t.client.Begin()
 	if err != nil {
-		return nil, xerror.ErrGetTimestampFailed
+		return store.NoValue, xerror.ErrGetTimestampFailed
 	}
 	t.log.Debugf("start ts %d", tx.StartTS())
 	if option.ReplicaRead {
@@ -110,13 +109,19 @@ func (t *TiKV) Get(key []byte, option store.Option) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.ReadTimeout.Duration)
 	defer cancel()
 	v, err := tx.Get(ctx, key)
+	secondary := false
+	if kv.IsErrNotFound(err) && option.Secondary != nil {
+		secondary = true
+		v, err = tx.Get(ctx, option.Secondary)
+	}
+
 	if kv.IsErrNotFound(err) {
-		return nil, xerror.ErrNotExists
+		return store.NoValue, xerror.ErrNotExists
 	}
 	if err != nil {
-		return nil, xerror.ErrGetKVFailed
+		return store.NoValue, xerror.ErrGetKVFailed
 	}
-	return v, nil
+	return store.Value{Secondary: secondary, Value: v}, nil
 }
 
 func (t *TiKV) List(start, end []byte, limit int, option store.Option) ([]store.KeyValue, error) {
@@ -170,7 +175,7 @@ func (t *TiKV) List(start, end []byte, limit int, option store.Option) ([]store.
 	return ret, nil
 }
 
-func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte) error {
+func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte, check store.CheckFunc) error {
 	tx, err := t.client.Begin()
 	if err != nil {
 		return xerror.ErrGetTimestampFailed
@@ -179,15 +184,16 @@ func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte) error {
 	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.WriteTimeout.Duration)
 	defer cancel()
 	t.log.Debugf("get key %s", key)
-	v, err := tx.Get(ctx, key)
+	existVal, err := tx.Get(ctx, key)
 	if kv.IsErrNotFound(err) {
-		if len(oldVal) > 0 {
-			return xerror.ErrCheckAndSetFailed
-		}
+		existVal = nil
 	} else if err != nil {
 		return xerror.ErrGetKVFailed
-	} else {
-		if !bytes.Equal(oldVal, v) {
+	}
+
+	if check != nil {
+		ok := check(oldVal, newVal, existVal)
+		if !ok {
 			return xerror.ErrCheckAndSetFailed
 		}
 	}
@@ -234,15 +240,15 @@ func (t *TiKV) Put(key, val []byte) error {
 	return nil
 }
 
-func (t *TiKV) BatchDelete(start, end []byte, limit int) (int, error) {
+func (t *TiKV) BatchDelete(start, end []byte, limit int) ([]byte, int, error) {
 	tx, err := t.client.Begin()
 	if err != nil {
-		return 0, xerror.ErrGetTimestampFailed
+		return nil, 0, xerror.ErrGetTimestampFailed
 	}
 
 	it, err := tx.Iter(kv.Key(start), kv.Key(end))
 	if err != nil {
-		return 0, xerror.ErrListKVFailed
+		return nil, 0, xerror.ErrListKVFailed
 	}
 	defer it.Close()
 	tx.SetOption(kv.KeyOnly, true)
@@ -250,6 +256,7 @@ func (t *TiKV) BatchDelete(start, end []byte, limit int) (int, error) {
 	snapshot.SetOption(kv.ReplicaRead, kv.ReplicaReadFollower)
 
 	count := 0
+	var lastKey kv.Key
 	for it.Valid() {
 		key := it.Key()
 		if count == 0 {
@@ -261,6 +268,7 @@ func (t *TiKV) BatchDelete(start, end []byte, limit int) (int, error) {
 			break
 		}
 		count++
+		lastKey = key
 		if limit > 0 && count >= limit {
 			t.log.Infof("end delete %s, (%s-%s)", key, start, end)
 			break
@@ -276,10 +284,10 @@ func (t *TiKV) BatchDelete(start, end []byte, limit int) (int, error) {
 	defer cancel()
 	err = tx.Commit(ctx)
 	if err != nil {
-		return count, xerror.ErrCommitKVFailed
+		return nil, 0, xerror.ErrCommitKVFailed
 	}
 
-	return count, nil
+	return lastKey, count, nil
 }
 
 func (t *TiKV) UnsafeDelete(start, end []byte) error {

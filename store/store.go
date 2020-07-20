@@ -13,16 +13,25 @@ type DB interface {
 	Close() error
 	Put(key, val []byte) error
 	UnsafeDelete(start, end []byte) error
-	CheckAndPut(key, oldVal, newVal []byte) error
-	Get(key []byte, option Option) ([]byte, error)
-	BatchDelete(start, end []byte, limit int) (int, error)
+	CheckAndPut(key, oldVal, newVal []byte, check CheckFunc) error
+	Get(key []byte, option Option) (Value, error)
+	BatchDelete(start, end []byte, limit int) ([]byte, int, error)
 	List(start, end []byte, limit int, option Option) ([]KeyValue, error)
 }
+
+type CheckFunc func(oldVal, newVal, existVal []byte) bool
 
 type KeyValue struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
 }
+
+type Value struct {
+	Secondary bool
+	Value     []byte
+}
+
+var NoValue = Value{}
 
 type KeyEntry struct {
 	Key   []byte
@@ -33,6 +42,7 @@ type Option struct {
 	ReplicaRead bool
 	KeyOnly     bool
 	Reverse     bool
+	Secondary   []byte
 }
 
 var ReplicaReadOption = Option{ReplicaRead: true}
@@ -143,20 +153,20 @@ func (s *Store) Health() error {
 	return nil
 }
 
-func (s *Store) Get(key []byte, opt Option) ([]byte, error) {
+func (s *Store) Get(key []byte, opt Option) (Value, error) {
 	if s.db == nil {
-		return nil, xerror.ErrNotExists
+		return NoValue, xerror.ErrNotExists
 	}
 	v, err := s.db.Get(key, opt)
 	if err != nil {
 		s.log.Errorf("get key %s failed, %s", key, err)
-		return nil, err
+		return NoValue, err
 	}
 	s.log.Debugf("key %s value %s", key, v)
 	return v, nil
 }
 
-func (s *Store) CheckAndPut(key []byte, entry []byte) error {
+func (s *Store) CheckAndPut(key, entry []byte, check CheckFunc) error {
 	if s.db == nil {
 		return xerror.ErrNotExists
 	}
@@ -174,7 +184,7 @@ func (s *Store) CheckAndPut(key []byte, entry []byte) error {
 	}
 
 	s.log.Debugf("key %s old %s new %s", key, l.Old, l.New)
-	err = s.db.CheckAndPut(key, utils.S2B(l.Old), utils.S2B(l.New))
+	err = s.db.CheckAndPut(key, utils.S2B(l.Old), utils.S2B(l.New), check)
 	if err != nil {
 		s.log.Errorf("key %s cas failed, %s", key, err)
 		return err
@@ -199,18 +209,18 @@ func (s *Store) List(start, end []byte, limit int, option Option) ([]KeyValue, e
 	return res, nil
 }
 
-func (s *Store) BatchDelete(start, end []byte, limit int) (int, error) {
+func (s *Store) BatchDelete(start, end []byte, limit int) ([]byte, int, error) {
 	if s.db == nil {
-		return 0, xerror.ErrNotExists
+		return nil, 0, xerror.ErrNotExists
 	}
 
-	deleted, err := s.db.BatchDelete(start, end, limit)
+	lastKey, deleted, err := s.db.BatchDelete(start, end, limit)
 	if err != nil {
 		s.log.Errorf("deleted %d (%s-%s) limit %d err %s", deleted, start, end, limit, err)
-		return deleted, err
+		return lastKey, deleted, err
 	}
 	s.log.Infof("deleted %d (%s-%s)", deleted, start, end)
-	return deleted, nil
+	return lastKey, deleted, nil
 }
 
 func (s *Store) UnsafeDelete(start, end []byte) {

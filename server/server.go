@@ -70,9 +70,9 @@ func (s *Server) registerRoutes() error {
 	}
 
 	api := s.router.Group(path.Join("/api", version.API))
-	api.GET("/meta/*key", s.Get)
-	api.PUT("/meta/*key", s.CheckAndPut)
-	api.POST("/meta/*key", s.CheckAndPut)
+	api.GET("/meta/:key", s.Get)
+	api.PUT("/meta/:key", s.CheckAndPut)
+	api.POST("/meta/:key", s.CheckAndPut)
 	api.DELETE("/list/", s.AsyncBatchDelete)
 	api.GET("/list/", s.List)
 	api.GET("/config/", s.GetConfig)

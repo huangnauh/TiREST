@@ -1,7 +1,6 @@
 package tikv
 
 import (
-	"bytes"
 	"context"
 	"github.com/sirupsen/logrus"
 	tikvConfig "github.com/tikv/client-go/config"
@@ -54,22 +53,28 @@ func (t *TiKV) Close() error {
 	return t.client.Close()
 }
 
-func (t *TiKV) Get(key []byte, option store.Option) ([]byte, error) {
+func (t *TiKV) Get(key []byte, option store.Option) (store.Value, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.ReadTimeout.Duration)
 	defer cancel()
 	tx, err := t.client.Begin(ctx)
 	if err != nil {
-		return nil, xerror.ErrGetTimestampFailed
+		return store.NoValue, xerror.ErrGetTimestampFailed
 	}
 
 	v, err := tx.Get(ctx, key)
+	secondary := false
+	if err == kv.ErrNotExist && option.Secondary != nil {
+		secondary = true
+		v, err = tx.Get(ctx, option.Secondary)
+	}
+
 	if err == kv.ErrNotExist {
-		return nil, xerror.ErrNotExists
+		return store.NoValue, xerror.ErrNotExists
 	}
 	if err != nil {
-		return nil, xerror.ErrGetKVFailed
+		return store.NoValue, xerror.ErrGetKVFailed
 	}
-	return v, nil
+	return store.Value{Secondary: secondary, Value: v}, nil
 }
 
 func (t *TiKV) List(start, end []byte, limit int, option store.Option) ([]store.KeyValue, error) {
@@ -101,7 +106,7 @@ func (t *TiKV) List(start, end []byte, limit int, option store.Option) ([]store.
 	return ret, nil
 }
 
-func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte) error {
+func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte, check store.CheckFunc) error {
 	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.WriteTimeout.Duration)
 	defer cancel()
 	tx, err := t.client.Begin(ctx)
@@ -109,17 +114,16 @@ func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte) error {
 		return xerror.ErrGetTimestampFailed
 	}
 
-	v, err := tx.Get(ctx, key)
+	existVal, err := tx.Get(ctx, key)
 	if err == kv.ErrNotExist {
-		if len(oldVal) > 0 {
-			t.log.Errorf("%s cas has old but not in db", key)
-			return xerror.ErrCheckAndSetFailed
-		}
+		existVal = nil
 	} else if err != nil {
 		return xerror.ErrGetKVFailed
-	} else {
-		if !bytes.Equal(oldVal, v) {
-			t.log.Errorf("%s cas old not same %s, %s", key, oldVal, v)
+	}
+
+	if check != nil {
+		ok := check(oldVal, newVal, existVal)
+		if !ok {
 			return xerror.ErrCheckAndSetFailed
 		}
 	}
@@ -165,22 +169,23 @@ func (t *TiKV) Put(key, val []byte) error {
 	return nil
 }
 
-func (t *TiKV) BatchDelete(start, end []byte, limit int) (int, error) {
+func (t *TiKV) BatchDelete(start, end []byte, limit int) ([]byte, int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.BatchDeleteTimeout.Duration)
 	defer cancel()
 	tx, err := t.client.Begin(ctx)
 	if err != nil {
-		return 0, xerror.ErrGetTimestampFailed
+		return nil, 0, xerror.ErrGetTimestampFailed
 	}
 	tx.SetOption(kv.KeyOnly, true)
 
 	it, err := tx.Iter(ctx, key.Key(start), key.Key(end))
 	if err != nil {
-		return 0, xerror.ErrListKVFailed
+		return nil, 0, xerror.ErrListKVFailed
 	}
 	defer it.Close()
 
 	count := 0
+	var lastKey key.Key
 	for it.Valid() {
 		k := it.Key()
 		t.log.Debugf("delete key %s", k)
@@ -190,6 +195,7 @@ func (t *TiKV) BatchDelete(start, end []byte, limit int) (int, error) {
 			break
 		}
 		count++
+		lastKey = k
 		if limit > 0 && count >= limit {
 			break
 		}
@@ -202,9 +208,9 @@ func (t *TiKV) BatchDelete(start, end []byte, limit int) (int, error) {
 
 	err = tx.Commit(ctx)
 	if err != nil {
-		return count, xerror.ErrCommitKVFailed
+		return nil, 0, xerror.ErrCommitKVFailed
 	}
-	return count, nil
+	return lastKey, count, nil
 }
 
 func (t *TiKV) UnsafeDelete(start, end []byte) error {

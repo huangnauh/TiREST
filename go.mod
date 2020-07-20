@@ -9,6 +9,8 @@ require (
 	github.com/bsm/sarama-cluster v2.1.16-0.20190423073834-d5779253526c+incompatible
 	github.com/gin-gonic/gin v1.6.3
 	github.com/nsqio/go-diskqueue v1.0.0
+	github.com/pingcap/kvproto v0.0.0-20200518112156-d4aeb467de29
+	github.com/pingcap/pd/v4 v4.0.0-rc.2.0.20200520083007-2c251bd8f181
 	github.com/pingcap/tidb v1.1.0-beta.0.20200604055950-efc1c154d098
 	github.com/prometheus/client_golang v1.5.1
 	github.com/sirupsen/logrus v1.6.0

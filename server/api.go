@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
@@ -11,11 +12,10 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
-	"strings"
 )
 
-func (s *Server) checkKey(key string) ([]byte, error) {
-	decoded, err := base64.StdEncoding.DecodeString(key[1:])
+func (s *Server) checkBase64(key string) ([]byte, error) {
+	decoded, err := base64.URLEncoding.DecodeString(key)
 	if err != nil {
 		s.log.Errorf("decode key %s err: %s", key, err)
 		return nil, err
@@ -25,33 +25,59 @@ func (s *Server) checkKey(key string) ([]byte, error) {
 
 func (s *Server) Get(c *gin.Context) {
 	keyStr := c.Param("key")
-	key, err := s.checkKey(keyStr)
+	key, err := s.checkBase64(keyStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid key"})
 		return
 	}
 
+	l := &model.Meta{}
+	if err := c.ShouldBindHeader(&l); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	opts := store.NoOption
 	if s.conf.Server.ReplicaRead {
-		opts = store.ReplicaReadOption
+		opts.ReplicaRead = true
 	}
+	if l.Secondary != "" {
+		opts.Secondary = utils.S2B(l.Secondary)
+	}
+
 	v, err := s.store.Get(key, opts)
 	if err == xerror.ErrNotExists {
 		c.Writer.WriteHeader(http.StatusNotFound)
 	} else if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	} else {
-		c.Header("Content-Length", strconv.Itoa(len(v)))
-		c.Data(http.StatusOK, "application/octet-stream", v)
+		if v.Secondary {
+			c.Header("X-Secondary", "true")
+		}
+		c.Header("Content-Length", strconv.Itoa(len(v.Value)))
+		c.Data(http.StatusOK, "application/octet-stream", v.Value)
 	}
 }
 
 func (s *Server) CheckAndPut(c *gin.Context) {
 	keyStr := c.Param("key")
-	key, err := s.checkKey(keyStr)
+	key, err := s.checkBase64(keyStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid key"})
 		return
+	}
+
+	l := &model.Meta{}
+	if err := c.ShouldBindHeader(&l); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var check store.CheckFunc
+	if !l.Force {
+		check = ExactCheck
+	} else {
+		check = TimestampCheck
 	}
 
 	entry, err := ioutil.ReadAll(c.Request.Body)
@@ -61,7 +87,7 @@ func (s *Server) CheckAndPut(c *gin.Context) {
 		return
 	}
 
-	err = s.store.CheckAndPut(key, entry)
+	err = s.store.CheckAndPut(key, entry, check)
 	if err == xerror.ErrCheckAndSetFailed {
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		return
@@ -72,18 +98,44 @@ func (s *Server) CheckAndPut(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+func (s *Server) getRangeFromList(l *model.List) ([]byte, []byte, error) {
+	var start, end []byte
+	var err error
+	if !l.Raw {
+		start, err = s.checkBase64(l.Start)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		end, err = s.checkBase64(l.End)
+		if err != nil {
+			return nil, nil, err
+		}
+	} else {
+		start = utils.S2B(l.Start)
+		end = utils.S2B(l.End)
+	}
+
+	if bytes.Compare(start, end) >= 0 {
+		s.log.Errorf("list start %s > end %s", l.Start, l.End)
+		return nil, nil, xerror.ErrListKVInvalid
+	}
+	return start, end, nil
+}
+
 func (s *Server) List(c *gin.Context) {
 	l := &model.List{}
-	if err := c.ShouldBindHeader(&l); err != nil {
+	err := c.ShouldBindHeader(&l)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if strings.Compare(l.Start, l.End) >= 0 {
-		s.log.Errorf("list start %s > end %s", l.Start, l.End)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "start end invalid"})
+
+	start, end, err := s.getRangeFromList(l)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
 	if l.Limit <= 0 || l.Limit > 10000 {
 		l.Limit = 10000
 	}
@@ -97,7 +149,7 @@ func (s *Server) List(c *gin.Context) {
 		opts.Reverse = true
 	}
 
-	keyEntry, err := s.store.List(utils.S2B(l.Start), utils.S2B(l.End), l.Limit, opts)
+	keyEntry, err := s.store.List(start, end, l.Limit, opts)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -115,14 +167,20 @@ func (s *Server) List(c *gin.Context) {
 
 func (s *Server) AsyncBatchDelete(c *gin.Context) {
 	l := &model.List{}
-	if err := c.ShouldBindHeader(&l); err != nil {
+	err := c.ShouldBindHeader(&l)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if strings.Compare(l.Start, l.End) >= 0 {
-		s.log.Errorf("list start %s > end %s", l.Start, l.End)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "start end invalid"})
+	if l.Reverse {
+		c.JSON(http.StatusBadRequest, gin.H{"error": xerror.ErrNotSupported})
+		return
+	}
+
+	start, end, err := s.getRangeFromList(l)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -132,7 +190,7 @@ func (s *Server) AsyncBatchDelete(c *gin.Context) {
 
 	if l.Unsafe {
 		go func() {
-			s.store.UnsafeDelete(utils.S2B(l.Start), utils.S2B(l.End))
+			s.store.UnsafeDelete(start, end)
 		}()
 		c.Status(http.StatusNoContent)
 		return
@@ -140,8 +198,11 @@ func (s *Server) AsyncBatchDelete(c *gin.Context) {
 
 	go func() {
 		count := 0
+		lastKey := start
+		var err error
 		for {
-			deleted, err := s.store.BatchDelete(utils.S2B(l.Start), utils.S2B(l.End), l.Limit)
+			deleted := 0
+			lastKey, deleted, err = s.store.BatchDelete(lastKey, end, l.Limit)
 			if err != nil {
 				s.log.Errorf("list (%s-%s), deleted %d, err: %s", l.Start, l.End, count, err)
 				return

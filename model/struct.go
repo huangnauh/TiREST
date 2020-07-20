@@ -7,4 +7,10 @@ type List struct {
 	Reverse bool   `header:"X-Reverse" json:"reverse"`
 	KeyOnly bool   `header:"X-Key-Only" json:"key-only"`
 	Unsafe  bool   `header:"X-Unsafe" json:"unsafe"`
+	Raw     bool   `header:"X-Raw" json:"raw"`
+}
+
+type Meta struct {
+	Force     bool   `header:"X-Force" json:"force"`
+	Secondary string `header:"X-Secondary" json:"secondary"`
 }

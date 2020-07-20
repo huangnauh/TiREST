@@ -5,7 +5,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"gitlab.s.upyun.com/platform/tikv-proxy/commands"
 	_ "gitlab.s.upyun.com/platform/tikv-proxy/store/kafka"
-	//_ "gitlab.s.upyun.com/platform/tikv-proxy/store/newtikv"
+	_ "gitlab.s.upyun.com/platform/tikv-proxy/store/newtikv"
 	//_ "gitlab.s.upyun.com/platform/tikv-proxy/store/tikv"
 	"gitlab.s.upyun.com/platform/tikv-proxy/version"
 	"os"
