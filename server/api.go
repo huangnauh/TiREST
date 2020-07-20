@@ -15,7 +15,7 @@ import (
 )
 
 func (s *Server) checkBase64(key string) ([]byte, error) {
-	decoded, err := base64.URLEncoding.DecodeString(key)
+	decoded, err := base64.RawURLEncoding.DecodeString(key)
 	if err != nil {
 		s.log.Errorf("decode key %s err: %s", key, err)
 		return nil, err

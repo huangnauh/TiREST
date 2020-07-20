@@ -158,7 +158,7 @@ func (s *Store) Get(key []byte, opt Option) (Value, error) {
 		return NoValue, xerror.ErrNotExists
 	}
 	v, err := s.db.Get(key, opt)
-	if err != nil {
+	if err != nil && err != xerror.ErrNotExists {
 		s.log.Errorf("get key %s failed, %s", key, err)
 		return NoValue, err
 	}
