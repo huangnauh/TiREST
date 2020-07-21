@@ -192,7 +192,8 @@ func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte, check store.CheckFunc) er
 	}
 
 	if check != nil {
-		ok := check(oldVal, newVal, existVal)
+		ok := false
+		newVal, ok = check(oldVal, newVal, existVal)
 		if !ok {
 			return xerror.ErrCheckAndSetFailed
 		}
