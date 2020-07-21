@@ -27,7 +27,7 @@ func TimestampCheck(oldVal, newVal, existVal []byte) ([]byte, bool) {
 	if len(oldVal) > 0 {
 		err := json.Unmarshal(oldVal, &oldV)
 		if err != nil {
-			logrus.Warnf("old %s not valid", oldVal)
+			logrus.Warnf("old %s not valid, %s", oldVal, err)
 			return nil, false
 		}
 		if oldV.UpdatedAt < 0 {
@@ -40,7 +40,7 @@ func TimestampCheck(oldVal, newVal, existVal []byte) ([]byte, bool) {
 	if len(existVal) > 0 {
 		err := json.Unmarshal(existVal, &existV)
 		if err != nil {
-			logrus.Warnf("exist %s not valid", existVal)
+			logrus.Warnf("exist %s not valid, %s", existVal, err)
 			return nil, false
 		}
 		if existV.UpdatedAt < 0 {
@@ -61,7 +61,7 @@ func TimestampCheck(oldVal, newVal, existVal []byte) ([]byte, bool) {
 	newV := UpdatedAtValue{}
 	err := json.Unmarshal(newVal, &newV)
 	if err != nil {
-		logrus.Warnf("new %s not valid", newVal)
+		logrus.Warnf("new %s not valid, %s", newVal, err)
 		return nil, false
 	}
 
