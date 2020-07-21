@@ -19,7 +19,7 @@ type DB interface {
 	List(start, end []byte, limit int, option Option) ([]KeyValue, error)
 }
 
-type CheckFunc func(oldVal, newVal, existVal []byte) ([]byte, bool)
+type CheckFunc func(oldVal, newVal, existVal []byte) ([]byte, error)
 
 type KeyValue struct {
 	Key   string `json:"key"`

@@ -74,10 +74,10 @@ func (s *Server) CheckAndPut(c *gin.Context) {
 	}
 
 	var check store.CheckFunc
-	if !l.Force {
-		check = ExactCheck
-	} else {
+	if !l.Exact {
 		check = TimestampCheck
+	} else {
+		check = ExactCheck
 	}
 
 	entry, err := ioutil.ReadAll(c.Request.Body)
@@ -90,6 +90,9 @@ func (s *Server) CheckAndPut(c *gin.Context) {
 	err = s.store.CheckAndPut(key, entry, check)
 	if err == xerror.ErrCheckAndSetFailed {
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		return
+	} else if err == xerror.ErrAlreadyExists {
+		c.Status(http.StatusOK)
 		return
 	} else if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

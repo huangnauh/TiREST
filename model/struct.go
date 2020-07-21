@@ -11,6 +11,6 @@ type List struct {
 }
 
 type Meta struct {
-	Force     bool   `header:"X-Force" json:"force"`
+	Exact     bool   `header:"X-Exact" json:"exact"`
 	Secondary string `header:"X-Secondary" json:"secondary"`
 }
