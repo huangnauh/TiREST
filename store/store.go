@@ -1,11 +1,11 @@
 package store
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/sirupsen/logrus"
 	"gitlab.s.upyun.com/platform/tikv-proxy/config"
 	"gitlab.s.upyun.com/platform/tikv-proxy/utils"
+	"gitlab.s.upyun.com/platform/tikv-proxy/utils/json"
 	"gitlab.s.upyun.com/platform/tikv-proxy/xerror"
 )
 

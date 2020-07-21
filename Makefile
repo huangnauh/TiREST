@@ -14,13 +14,13 @@ endif
 tikv:
 	git checkout main.go
 	sed -i $(EXTENSION) '/\/tikv"/s/\/\///' main.go
-	go build -o tikv-proxy main.go
+	go build -tags=jsoniter -o tikv-proxy main.go
 
 
 newtikv:
 	git checkout main.go
 	sed -i $(EXTENSION) '/\/newtikv"/s/\/\///' main.go
-	go build -o tikv-proxy main.go
+	go build -tags=jsoniter -o tikv-proxy main.go
 
 
 .PHONY: tikv newtikv

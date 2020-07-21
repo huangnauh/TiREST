@@ -2,8 +2,8 @@ package server
 
 import (
 	"bytes"
-	"encoding/json"
 	"github.com/sirupsen/logrus"
+	"gitlab.s.upyun.com/platform/tikv-proxy/utils/json"
 )
 
 // old == exist

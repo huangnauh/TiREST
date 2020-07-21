@@ -3,11 +3,11 @@ package server
 import (
 	"bytes"
 	"encoding/base64"
-	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"gitlab.s.upyun.com/platform/tikv-proxy/model"
 	"gitlab.s.upyun.com/platform/tikv-proxy/store"
 	"gitlab.s.upyun.com/platform/tikv-proxy/utils"
+	"gitlab.s.upyun.com/platform/tikv-proxy/utils/json"
 	"gitlab.s.upyun.com/platform/tikv-proxy/xerror"
 	"io/ioutil"
 	"net/http"
