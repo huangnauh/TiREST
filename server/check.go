@@ -24,25 +24,33 @@ type UpdatedAtValue struct {
 
 func TimestampCheck(oldVal, newVal, existVal []byte) ([]byte, bool) {
 	oldV := UpdatedAtValue{}
-	err := json.Unmarshal(oldVal, &oldV)
-	if err != nil {
-		return nil, false
-	}
-	if oldV.UpdatedAt < 0 {
-		return nil, false
+	if len(oldVal) > 0 {
+		err := json.Unmarshal(oldVal, &oldV)
+		if err != nil {
+			logrus.Warnf("old %s not valid", oldVal)
+			return nil, false
+		}
+		if oldV.UpdatedAt < 0 {
+			logrus.Warnf("old %s not valid", oldVal)
+			return nil, false
+		}
 	}
 
 	existV := UpdatedAtValue{}
-	err = json.Unmarshal(existVal, &existV)
-	if err != nil {
-		return nil, false
-	}
-	if existV.UpdatedAt < 0 {
-		return nil, false
+	if len(existVal) > 0 {
+		err := json.Unmarshal(existVal, &existV)
+		if err != nil {
+			logrus.Warnf("exist %s not valid", existVal)
+			return nil, false
+		}
+		if existV.UpdatedAt < 0 {
+			logrus.Warnf("exist %s not valid", existVal)
+			return nil, false
+		}
 	}
 
 	if oldV.UpdatedAt < existV.UpdatedAt {
-		logrus.Warnf("online old %s < exist %s, new %s", oldVal, existVal, newVal)
+		logrus.Warnf("old %s < exist %s, new %s", oldVal, existVal, newVal)
 		return nil, false
 	}
 
@@ -51,22 +59,24 @@ func TimestampCheck(oldVal, newVal, existVal []byte) ([]byte, bool) {
 	}
 
 	newV := UpdatedAtValue{}
-	err = json.Unmarshal(newVal, &newV)
+	err := json.Unmarshal(newVal, &newV)
 	if err != nil {
+		logrus.Warnf("new %s not valid", newVal)
 		return nil, false
 	}
 
 	if newV.UpdatedAt <= 0 {
+		logrus.Warnf("new %s not valid", newVal)
 		return nil, false
 	}
 
 	if oldV.UpdatedAt > newV.UpdatedAt {
-		logrus.Warnf("online old %s > new %s, exist %s", oldVal, newVal, existVal)
+		logrus.Warnf("old %s > new %s, exist %s", oldVal, newVal, existVal)
 		return nil, false
 	}
 
 	if existV.UpdatedAt > newV.UpdatedAt {
-		logrus.Warnf("online exist %s > new %s, old %s", existVal, newVal, oldVal)
+		logrus.Warnf("exist %s > new %s, old %s", existVal, newVal, oldVal)
 		return nil, false
 	}
 
