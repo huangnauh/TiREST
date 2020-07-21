@@ -47,7 +47,7 @@ func (s *Server) Get(c *gin.Context) {
 
 	v, err := s.store.Get(key, opts)
 	if err == xerror.ErrNotExists {
-		c.Writer.WriteHeader(http.StatusNotFound)
+		c.Status(http.StatusNotFound)
 	} else if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	} else {
@@ -225,6 +225,11 @@ func (s *Server) GetConfig(c *gin.Context) {
 }
 
 func (s *Server) Health(c *gin.Context) {
+	if s.closed {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "is closed"})
+		return
+	}
+
 	err := s.store.Health()
 	if err != nil {
 		s.log.Errorf("not health, %s", err)

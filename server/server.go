@@ -22,6 +22,7 @@ type Server struct {
 	conf   *config.Config
 	store  *store.Store
 	log    *logrus.Entry
+	closed bool
 }
 
 func NewServer(conf *config.Config) (*Server, error) {
@@ -100,7 +101,10 @@ func (s *Server) Start() {
 }
 
 func (s *Server) Close() {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	s.closed = true
+	// waiting health check done
+	time.Sleep(5 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	logrus.Infof("shutdown server")
 	err := s.server.Shutdown(ctx)
