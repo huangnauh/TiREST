@@ -63,6 +63,7 @@ type Server struct {
 	ReadHeaderTimeout *Duration `toml:"read-header-timeout"`
 	WriteTimeout      *Duration `toml:"write-timeout"`
 	IdleTimeout       *Duration `toml:"idle-timeout"`
+	SleepBeforeClose  *Duration `toml:"sleep-before-close"`
 	ReplicaRead       bool      `toml:"replica-read"`
 }
 
@@ -102,6 +103,7 @@ func DefaultConfig() *Config {
 			ReadHeaderTimeout: &Duration{5 * time.Second},
 			WriteTimeout:      &Duration{10 * time.Second},
 			IdleTimeout:       &Duration{2 * time.Minute},
+			SleepBeforeClose:  &Duration{5 * time.Second},
 			ReplicaRead:       false,
 		},
 		Connector: Connector{

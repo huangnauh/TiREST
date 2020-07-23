@@ -232,3 +232,12 @@ func (s *Store) UnsafeDelete(start, end []byte) {
 		s.log.Errorf("unsafe deleted (%s-%s), err %s", start, end, err)
 	}
 }
+
+func (s *Store) UnsafePut(key, val []byte) error {
+	s.log.Debugf("unsafe put %s val %s", key, val)
+	err := s.db.Put(key, val)
+	if err != nil {
+		s.log.Errorf("unsafe put %s val %s, err %s", key, val, err)
+	}
+	return err
+}

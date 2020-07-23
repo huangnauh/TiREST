@@ -21,7 +21,7 @@ const HttpMessage = "msg"
 
 var metric = newMetric()
 var logger *logrus.Logger
-var logwriter *log.RotatingOuter
+var logWriter *log.RotatingOuter
 
 func init() {
 	metric.mustRegister()
@@ -71,7 +71,7 @@ func (m *Metric) mustRegister() {
 func (m *Metric) handlerFunc() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
-		requstSize := c.Request.ContentLength
+		requestSize := c.Request.ContentLength
 		m.inFlightGauge.Inc()
 		defer func() {
 			m.inFlightGauge.Dec()
@@ -83,7 +83,7 @@ func (m *Metric) handlerFunc() gin.HandlerFunc {
 		latency := now.Sub(start)
 		responseSize := c.Writer.Size()
 
-		m.requestSize.WithLabelValues(status, c.Request.Method).Observe(float64(requstSize))
+		m.requestSize.WithLabelValues(status, c.Request.Method).Observe(float64(requestSize))
 		m.responseSize.WithLabelValues(status, c.Request.Method).Observe(float64(responseSize))
 		m.requestDuration.WithLabelValues(status, c.Request.Method).Observe(float64(latency) / float64(time.Second))
 		m.requestTotal.WithLabelValues(status, c.Request.Method).Inc()
@@ -99,22 +99,33 @@ func (m *Metric) handlerFunc() gin.HandlerFunc {
 
 		logger.Infof("%s %s %s %s %d %d %d %s '%s'\n", c.Request.RemoteAddr,
 			now.Format("2006-01-02T15:04:05.999"), c.Request.Method, c.Request.URL,
-			c.Writer.Status(), requstSize, responseSize, latency, msg)
+			c.Writer.Status(), requestSize, responseSize, latency, msg)
 	}
 }
 
 func InitLog(fileName string, bufferSize int, maxBytes int, backupCount int) error {
+	if fileName == "" {
+		logger = logrus.StandardLogger()
+		return nil
+	}
+
 	logger = logrus.New()
 
 	var err error
-	logwriter, err = log.NewRotatingOuter(fileName, bufferSize, maxBytes, backupCount)
+	logWriter, err = log.NewRotatingOuter(fileName, bufferSize, maxBytes, backupCount)
 	if err != nil {
 		return err
 	}
 
 	logger.Formatter = &log.Formatter{}
-	logger.Out = logwriter
+	logger.Out = logWriter
 	return nil
+}
+
+func CloseAccessLog() {
+	if logWriter != nil {
+		logWriter.Close()
+	}
 }
 
 func SetAccessLog() gin.HandlerFunc {

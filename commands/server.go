@@ -55,13 +55,16 @@ func runServer(c *cli.Context) error {
 			logrus.Errorf("init error log failed, err: %s", err)
 			return err
 		} else {
+			defer output.Close()
 			logrus.SetOutput(output)
 		}
 	} else {
 		logrus.SetOutput(os.Stderr)
 	}
 
-	if conf.Log.AccessLogDir != "" {
+	if conf.Log.AccessLogDir == "std" {
+		err = middleware.InitLog("", conf.Log.BufferSize, conf.Log.MaxBytes, conf.Log.BackupCount)
+	} else if conf.Log.AccessLogDir != "" {
 		err = middleware.InitLog(conf.Log.AccessLogDir, conf.Log.BufferSize, conf.Log.MaxBytes, conf.Log.BackupCount)
 		if err != nil {
 			logrus.Errorf("init access log failed, err: %s", err)

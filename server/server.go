@@ -52,6 +52,11 @@ func NewServer(conf *config.Config) (*Server, error) {
 	}, nil
 }
 
+func HandleNoRoute(c *gin.Context) {
+	c.Status(http.StatusNotImplemented)
+	return
+}
+
 func (s *Server) registerRoutes() error {
 	//if gin.IsDebugging() {
 	//	url := ginSwagger.URL("/swagger/doc.json")
@@ -70,6 +75,7 @@ func (s *Server) registerRoutes() error {
 		s.router.Use(middleware.SetTrace())
 	}
 
+	s.router.NoRoute(HandleNoRoute)
 	api := s.router.Group(path.Join("/api", version.API))
 	api.GET("/meta/:key", s.Get)
 	api.PUT("/meta/:key", s.CheckAndPut)
@@ -78,6 +84,10 @@ func (s *Server) registerRoutes() error {
 	api.GET("/list/", s.List)
 	api.GET("/config/", s.GetConfig)
 	api.GET("/health/", s.Health)
+
+	unsafe := api.Group("unsafe")
+	unsafe.DELETE("/meta/:key", s.UnsafeDelete)
+	unsafe.PUT("/meta/:key", s.UnsafePut)
 	return nil
 }
 
@@ -103,7 +113,7 @@ func (s *Server) Start() {
 func (s *Server) Close() {
 	s.closed = true
 	// waiting health check done
-	time.Sleep(5 * time.Second)
+	time.Sleep(s.conf.Server.SleepBeforeClose.Duration)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	logrus.Infof("shutdown server")
@@ -111,6 +121,7 @@ func (s *Server) Close() {
 	if err != nil {
 		logrus.Errorf("shutdown failed %s", err)
 	}
+	middleware.CloseAccessLog()
 	logrus.Infof("shutdown store")
 	err = s.store.Close()
 	if err != nil {

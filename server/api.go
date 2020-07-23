@@ -59,6 +59,45 @@ func (s *Server) Get(c *gin.Context) {
 	}
 }
 
+func (s *Server) UnsafeDelete(c *gin.Context) {
+	keyStr := c.Param("key")
+	key, err := s.checkBase64(keyStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid key"})
+		return
+	}
+
+	err = s.store.UnsafePut(key, nil)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	} else {
+		c.Status(http.StatusNoContent)
+	}
+}
+
+func (s *Server) UnsafePut(c *gin.Context) {
+	keyStr := c.Param("key")
+	key, err := s.checkBase64(keyStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid key"})
+		return
+	}
+
+	val, err := ioutil.ReadAll(c.Request.Body)
+	if err != nil {
+		s.log.Errorf("read body failed: %s", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	err = s.store.UnsafePut(key, val)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	} else {
+		c.Status(http.StatusNoContent)
+	}
+}
+
 func (s *Server) CheckAndPut(c *gin.Context) {
 	keyStr := c.Param("key")
 	key, err := s.checkBase64(keyStr)

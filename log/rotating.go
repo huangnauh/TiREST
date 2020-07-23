@@ -149,7 +149,11 @@ func (h *RotatingOuter) Write(p []byte) (int, error) {
 func (h *RotatingOuter) Close() error {
 	fmt.Printf("log file %s close\n", h.fileName)
 	h.bytesChan <- nil // send nil to channel
-	return h.writer.Close()
+	err := h.writer.Close()
+	if err != nil {
+		fmt.Printf("log file %s close, %s\n", h.fileName, err)
+	}
+	return err
 }
 
 func (h *RotatingOuter) openFile() error {
