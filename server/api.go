@@ -2,10 +2,8 @@ package server
 
 import (
 	"bytes"
-	"encoding/base64"
 	"github.com/gin-gonic/gin"
 	"gitlab.s.upyun.com/platform/tikv-proxy/model"
-	"gitlab.s.upyun.com/platform/tikv-proxy/store"
 	"gitlab.s.upyun.com/platform/tikv-proxy/utils"
 	"gitlab.s.upyun.com/platform/tikv-proxy/utils/json"
 	"gitlab.s.upyun.com/platform/tikv-proxy/xerror"
@@ -14,35 +12,31 @@ import (
 	"strconv"
 )
 
-func (s *Server) checkBase64(key string) ([]byte, error) {
-	decoded, err := base64.RawURLEncoding.DecodeString(key)
-	if err != nil {
-		s.log.Errorf("decode key %s err: %s", key, err)
-		return nil, err
-	}
-	return decoded, nil
-}
-
 func (s *Server) Get(c *gin.Context) {
-	keyStr := c.Param("key")
-	key, err := s.checkBase64(keyStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid key"})
-		return
-	}
-
 	l := &model.Meta{}
 	if err := c.ShouldBindHeader(&l); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	opts := store.NoOption
+	keyStr := c.Param("key")
+	key, err := EncodeMetaKey(keyStr, l.Raw)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid key"})
+		return
+	}
+
+	opts := DefaultGetOption()
 	if s.conf.Server.ReplicaRead {
 		opts.ReplicaRead = true
 	}
 	if l.Secondary != "" {
-		opts.Secondary = utils.S2B(l.Secondary)
+		secondary, err := EncodeMetaKey(l.Secondary, l.Raw)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid secondary"})
+			return
+		}
+		opts.Secondary = secondary
 	}
 
 	v, err := s.store.Get(key, opts)
@@ -60,8 +54,14 @@ func (s *Server) Get(c *gin.Context) {
 }
 
 func (s *Server) UnsafeDelete(c *gin.Context) {
+	l := &model.Meta{}
+	if err := c.ShouldBindHeader(&l); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	keyStr := c.Param("key")
-	key, err := s.checkBase64(keyStr)
+	key, err := EncodeMetaKey(keyStr, l.Raw)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid key"})
 		return
@@ -76,8 +76,14 @@ func (s *Server) UnsafeDelete(c *gin.Context) {
 }
 
 func (s *Server) UnsafePut(c *gin.Context) {
+	l := &model.Meta{}
+	if err := c.ShouldBindHeader(&l); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	keyStr := c.Param("key")
-	key, err := s.checkBase64(keyStr)
+	key, err := EncodeMetaKey(keyStr, l.Raw)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid key"})
 		return
@@ -99,24 +105,22 @@ func (s *Server) UnsafePut(c *gin.Context) {
 }
 
 func (s *Server) CheckAndPut(c *gin.Context) {
-	keyStr := c.Param("key")
-	key, err := s.checkBase64(keyStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid key"})
-		return
-	}
-
 	l := &model.Meta{}
 	if err := c.ShouldBindHeader(&l); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	var check store.CheckFunc
-	if !l.Exact {
-		check = TimestampCheck
-	} else {
-		check = ExactCheck
+	keyStr := c.Param("key")
+	key, err := EncodeMetaKey(keyStr, l.Raw)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid key"})
+		return
+	}
+
+	opts := DefaultCheckOption()
+	if l.Exact {
+		opts.Check = ExactCheck
 	}
 
 	entry, err := ioutil.ReadAll(c.Request.Body)
@@ -126,7 +130,7 @@ func (s *Server) CheckAndPut(c *gin.Context) {
 		return
 	}
 
-	err = s.store.CheckAndPut(key, entry, check)
+	err = s.store.CheckAndPut(key, entry, opts)
 	if err == xerror.ErrCheckAndSetFailed {
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		return
@@ -141,21 +145,13 @@ func (s *Server) CheckAndPut(c *gin.Context) {
 }
 
 func (s *Server) getRangeFromList(l *model.List) ([]byte, []byte, error) {
-	var start, end []byte
-	var err error
-	if !l.Raw {
-		start, err = s.checkBase64(l.Start)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		end, err = s.checkBase64(l.End)
-		if err != nil {
-			return nil, nil, err
-		}
-	} else {
-		start = utils.S2B(l.Start)
-		end = utils.S2B(l.End)
+	start, err := EncodeMetaKey(l.Start, l.Raw)
+	if err != nil {
+		return nil, nil, err
+	}
+	end, err := EncodeMetaKey(l.End, l.Raw)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	if bytes.Compare(start, end) >= 0 {
@@ -182,9 +178,9 @@ func (s *Server) List(c *gin.Context) {
 		l.Limit = 10000
 	}
 
-	opts := store.NoOption
+	opts := DefaultListOption()
 	if l.KeyOnly {
-		opts = store.KeyOnlyOption
+		opts.KeyOnly = true
 	}
 
 	if l.Reverse {

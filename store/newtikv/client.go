@@ -95,7 +95,7 @@ func (t *TiKV) Close() error {
 	return t.client.Close()
 }
 
-func (t *TiKV) Get(key []byte, option store.Option) (store.Value, error) {
+func (t *TiKV) Get(key []byte, option store.GetOption) (store.Value, error) {
 	tx, err := t.client.Begin()
 	if err != nil {
 		return store.NoValue, xerror.ErrGetTimestampFailed
@@ -124,7 +124,7 @@ func (t *TiKV) Get(key []byte, option store.Option) (store.Value, error) {
 	return store.Value{Secondary: secondary, Value: v}, nil
 }
 
-func (t *TiKV) List(start, end []byte, limit int, option store.Option) ([]store.KeyValue, error) {
+func (t *TiKV) List(start, end []byte, limit int, option store.ListOption) ([]store.KeyValue, error) {
 	tx, err := t.client.Begin()
 	if err != nil {
 		t.log.Errorf("client begin failed %s", err)
@@ -160,10 +160,16 @@ func (t *TiKV) List(start, end []byte, limit int, option store.Option) ([]store.
 	ret := make([]store.KeyValue, 0)
 	for it.Valid() && limit > 0 {
 		k := it.Key()
+		v := it.Value()
+		k, v, err = option.Item(k, v)
+		if err != nil {
+			continue
+		}
+
 		if kv.Key(k).Cmp(s) < 0 || kv.Key(k).Cmp(e) >= 0 {
 			break
 		}
-		v := it.Value()
+
 		ret = append(ret, store.KeyValue{Key: utils.B2S(k), Value: utils.B2S(v)})
 		limit--
 		err = it.Next()
@@ -175,7 +181,7 @@ func (t *TiKV) List(start, end []byte, limit int, option store.Option) ([]store.
 	return ret, nil
 }
 
-func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte, check store.CheckFunc) error {
+func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte, check store.CheckOption) error {
 	tx, err := t.client.Begin()
 	if err != nil {
 		return xerror.ErrGetTimestampFailed
@@ -191,8 +197,8 @@ func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte, check store.CheckFunc) er
 		return xerror.ErrGetKVFailed
 	}
 
-	if check != nil {
-		newVal, err = check(oldVal, newVal, existVal)
+	if check.Check != nil {
+		newVal, err = check.Check(oldVal, newVal, existVal)
 		if err != nil {
 			return err
 		}

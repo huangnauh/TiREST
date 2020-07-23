@@ -42,7 +42,6 @@ type Store struct {
 	ListTimeout        *Duration `toml:"list-timeout"`
 	WriteTimeout       *Duration `toml:"write-timeout"`
 	BatchDeleteTimeout *Duration `toml:"batch-delete-timeout"`
-	GCEnable           bool      `toml:"gc-enable"`
 }
 
 func (d *Duration) UnmarshalText(text []byte) error {
@@ -93,7 +92,7 @@ func DefaultConfig() *Config {
 			ReadTimeout:        &Duration{10 * time.Second},
 			WriteTimeout:       &Duration{10 * time.Second},
 			ListTimeout:        &Duration{60 * time.Second},
-			BatchDeleteTimeout: &Duration{time.Hour},
+			BatchDeleteTimeout: &Duration{10 * time.Minute},
 		},
 		Server: Server{
 			HttpHost:          "127.0.0.1",

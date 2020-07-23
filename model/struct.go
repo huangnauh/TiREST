@@ -11,6 +11,7 @@ type List struct {
 }
 
 type Meta struct {
+	Raw       bool   `header:"X-Raw" json:"raw"`
 	Exact     bool   `header:"X-Exact" json:"exact"`
 	Secondary string `header:"X-Secondary" json:"secondary"`
 }

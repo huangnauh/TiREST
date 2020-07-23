@@ -26,9 +26,13 @@ type Server struct {
 }
 
 func NewServer(conf *config.Config) (*Server, error) {
-	gin.SetMode(conf.HttpServerMode())
+	mode := conf.HttpServerMode()
+	gin.SetMode(mode)
 	router := gin.New()
-	router.Use(middleware.SetAccessLog(), gin.Recovery())
+	router.Use(middleware.SetAccessLog())
+	if mode != gin.DebugMode {
+		router.Use(gin.Recovery())
+	}
 
 	server := &http.Server{
 		Addr:              fmt.Sprintf("%s:%d", conf.Server.HttpHost, conf.Server.HttpPort),
@@ -43,19 +47,32 @@ func NewServer(conf *config.Config) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Server{
+
+	ser := &Server{
 		server: server,
 		router: router,
 		conf:   conf,
 		store:  s,
 		log:    logrus.WithFields(logrus.Fields{"worker": "server"}),
-	}, nil
+	}
+
+	err = ser.registerRoutes()
+	if err != nil {
+		ser.log.Errorf("register routes err, %s", err)
+		return nil, err
+	}
+	return ser, nil
 }
 
 func HandleNoRoute(c *gin.Context) {
 	c.Status(http.StatusNotImplemented)
 	return
 }
+
+var (
+	ApiRoute    = path.Join("/api", version.API)
+	UnsafeRoute = "unsafe"
+)
 
 func (s *Server) registerRoutes() error {
 	//if gin.IsDebugging() {
@@ -76,7 +93,7 @@ func (s *Server) registerRoutes() error {
 	}
 
 	s.router.NoRoute(HandleNoRoute)
-	api := s.router.Group(path.Join("/api", version.API))
+	api := s.router.Group(ApiRoute)
 	api.GET("/meta/:key", s.Get)
 	api.PUT("/meta/:key", s.CheckAndPut)
 	api.POST("/meta/:key", s.CheckAndPut)
@@ -85,29 +102,23 @@ func (s *Server) registerRoutes() error {
 	api.GET("/config/", s.GetConfig)
 	api.GET("/health/", s.Health)
 
-	unsafe := api.Group("unsafe")
+	unsafe := api.Group(UnsafeRoute)
 	unsafe.DELETE("/meta/:key", s.UnsafeDelete)
 	unsafe.PUT("/meta/:key", s.UnsafePut)
+	unsafe.POST("/meta/:key", s.UnsafePut)
 	return nil
 }
 
 func (s *Server) Start() {
-	err := s.registerRoutes()
-	if err != nil {
-		s.log.Errorf("register routes err, %s", err)
-		return
-	}
-
 	go func() {
 		s.store.Open()
 	}()
 
 	s.log.Infof("Serving HTTP on %s port %d", s.conf.Server.HttpHost, s.conf.Server.HttpPort)
-	err = s.server.ListenAndServe()
+	err := s.server.ListenAndServe()
 	if err != nil {
 		return
 	}
-
 }
 
 func (s *Server) Close() {

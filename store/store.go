@@ -13,13 +13,14 @@ type DB interface {
 	Close() error
 	Put(key, val []byte) error
 	UnsafeDelete(start, end []byte) error
-	CheckAndPut(key, oldVal, newVal []byte, check CheckFunc) error
-	Get(key []byte, option Option) (Value, error)
+	CheckAndPut(key, oldVal, newVal []byte, option CheckOption) error
+	Get(key []byte, option GetOption) (Value, error)
 	BatchDelete(start, end []byte, limit int) ([]byte, int, error)
-	List(start, end []byte, limit int, option Option) ([]KeyValue, error)
+	List(start, end []byte, limit int, option ListOption) ([]KeyValue, error)
 }
 
 type CheckFunc func(oldVal, newVal, existVal []byte) ([]byte, error)
+type ItemFunc func(key, val []byte) ([]byte, []byte, error)
 
 type KeyValue struct {
 	Key   string `json:"key"`
@@ -38,16 +39,21 @@ type KeyEntry struct {
 	Entry []byte
 }
 
-type Option struct {
+type GetOption struct {
 	ReplicaRead bool
-	KeyOnly     bool
-	Reverse     bool
 	Secondary   []byte
 }
 
-var ReplicaReadOption = Option{ReplicaRead: true}
-var KeyOnlyOption = Option{KeyOnly: true}
-var NoOption = Option{}
+type ListOption struct {
+	ReplicaRead bool
+	KeyOnly     bool
+	Reverse     bool
+	Item        ItemFunc
+}
+
+type CheckOption struct {
+	Check CheckFunc
+}
 
 type Connector interface {
 	Close()
@@ -100,11 +106,11 @@ func RegisterConnector(driver ConnectorDriver) {
 func NewStore(conf *config.Config) (*Store, error) {
 	_, ok := cDrivers[conf.Connector.Name]
 	if !ok {
-		return nil, xerror.ErrNotRegister
+		return nil, xerror.ErrConnectorNotRegister
 	}
 	_, ok = dDrivers[conf.Store.Name]
 	if !ok {
-		return nil, xerror.ErrNotRegister
+		return nil, xerror.ErrDatabaseNotRegister
 	}
 	return &Store{
 		conf: conf,
@@ -153,7 +159,7 @@ func (s *Store) Health() error {
 	return nil
 }
 
-func (s *Store) Get(key []byte, opt Option) (Value, error) {
+func (s *Store) Get(key []byte, opt GetOption) (Value, error) {
 	if s.db == nil {
 		return NoValue, xerror.ErrNotExists
 	}
@@ -164,11 +170,11 @@ func (s *Store) Get(key []byte, opt Option) (Value, error) {
 		s.log.Errorf("get key %s failed, %s", key, err)
 		return NoValue, err
 	}
-	s.log.Debugf("key %s value %s", key, v)
+	s.log.Debugf("key %s value %t %s", key, v.Secondary, v.Value)
 	return v, nil
 }
 
-func (s *Store) CheckAndPut(key, entry []byte, check CheckFunc) error {
+func (s *Store) CheckAndPut(key, entry []byte, option CheckOption) error {
 	if s.db == nil {
 		return xerror.ErrNotExists
 	}
@@ -185,12 +191,12 @@ func (s *Store) CheckAndPut(key, entry []byte, check CheckFunc) error {
 		return err
 	}
 
-	s.log.Debugf("key %s old %s new %s", key, l.Old, l.New)
-	err = s.db.CheckAndPut(key, utils.S2B(l.Old), utils.S2B(l.New), check)
+	err = s.db.CheckAndPut(key, utils.S2B(l.Old), utils.S2B(l.New), option)
 	if err != nil {
 		s.log.Errorf("key %s cas failed, %s", key, err)
 		return err
 	}
+	s.log.Debugf("key %s old %s new %s", key, l.Old, l.New)
 
 	if entry != nil && s.connector != nil {
 		s.connector.Send(KeyEntry{Key: key, Entry: entry})
@@ -198,7 +204,7 @@ func (s *Store) CheckAndPut(key, entry []byte, check CheckFunc) error {
 	return nil
 }
 
-func (s *Store) List(start, end []byte, limit int, option Option) ([]KeyValue, error) {
+func (s *Store) List(start, end []byte, limit int, option ListOption) ([]KeyValue, error) {
 	if s.db == nil {
 		return nil, xerror.ErrNotExists
 	}
@@ -208,6 +214,7 @@ func (s *Store) List(start, end []byte, limit int, option Option) ([]KeyValue, e
 		s.log.Errorf("list (%s-%s) limit %d, %s", start, end, limit, err)
 		return nil, err
 	}
+	s.log.Debugf("list %d items (%s-%s)", len(res), start, end)
 	return res, nil
 }
 
@@ -221,23 +228,37 @@ func (s *Store) BatchDelete(start, end []byte, limit int) ([]byte, int, error) {
 		s.log.Errorf("deleted %d (%s-%s) limit %d err %s", deleted, start, end, limit, err)
 		return lastKey, deleted, err
 	}
+	//TODO
 	s.log.Infof("deleted %d (%s-%s)", deleted, start, end)
 	return lastKey, deleted, nil
 }
 
-func (s *Store) UnsafeDelete(start, end []byte) {
-	s.log.Infof("unsafe deleted (%s-%s)", start, end)
+func (s *Store) UnsafeDelete(start, end []byte) error {
+	if s.db == nil {
+		return xerror.ErrNotExists
+	}
+
 	err := s.db.UnsafeDelete(start, end)
 	if err != nil {
 		s.log.Errorf("unsafe deleted (%s-%s), err %s", start, end, err)
+		return err
 	}
+	//TODO
+	s.log.Infof("unsafe deleted (%s-%s)", start, end)
+	return nil
 }
 
 func (s *Store) UnsafePut(key, val []byte) error {
-	s.log.Debugf("unsafe put %s val %s", key, val)
+	if s.db == nil {
+		return xerror.ErrNotExists
+	}
+
 	err := s.db.Put(key, val)
 	if err != nil {
 		s.log.Errorf("unsafe put %s val %s, err %s", key, val, err)
+		return err
 	}
-	return err
+	//TODO
+	s.log.Debugf("unsafe put %s val %s", key, val)
+	return nil
 }

@@ -1,26 +1,27 @@
-APP= tikv-proxy
+APP=tikv-proxy
+REPO_PATH=gitlab.s.upyun.com/platform/$(APP)
 GIT_COMMIT=$(shell git rev-parse --short HEAD)
 GIT_DESCRIBE=$(shell git describe --tags --always)
-IMPORT=$(APP)/pkg/version
+IMPORT=$(REPO_PATH)/version
 GOLDFLAGS=-X $(IMPORT).GitCommit=$(GIT_COMMIT) -X $(IMPORT).GitDescribe=$(GIT_DESCRIBE)
 
 ifeq ($(shell uname -s), Darwin)
 PLAT=osx
-EXTENSION=""
+SED_EXTENSION=""
 else
 PLAT=linux
 endif
 
+#tikv:
+#	git checkout main.go
+#	sed -i $(SED_EXTENSION) '/\/tikv"/s/\/\///' main.go
+#	go build -tags=jsoniter -ldflags '$(GOLDFLAGS)' -o tikv-proxy main.go
+
+
 tikv:
-	git checkout main.go
-	sed -i $(EXTENSION) '/\/tikv"/s/\/\///' main.go
-	go build -tags=jsoniter -o tikv-proxy main.go
+#	git checkout main.go
+#	sed -i $(SED_EXTENSION) '/\/newtikv"/s/\/\///' main.go
+	go build -tags=jsoniter -ldflags '$(GOLDFLAGS)' -o tikv-proxy main.go
 
 
-newtikv:
-	git checkout main.go
-	sed -i $(EXTENSION) '/\/newtikv"/s/\/\///' main.go
-	go build -tags=jsoniter -o tikv-proxy main.go
-
-
-.PHONY: tikv newtikv
+.PHONY: tikv
