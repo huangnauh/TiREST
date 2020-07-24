@@ -5,6 +5,8 @@ GIT_DESCRIBE=$(shell git describe --tags --always)
 IMPORT=$(REPO_PATH)/version
 GOLDFLAGS=-X $(IMPORT).GitCommit=$(GIT_COMMIT) -X $(IMPORT).GitDescribe=$(GIT_DESCRIBE)
 
+WORK_DIR=$(shell pwd)
+
 ifeq ($(shell uname -s), Darwin)
 PLAT=osx
 SED_EXTENSION=""
@@ -21,7 +23,9 @@ endif
 tikv:
 #	git checkout main.go
 #	sed -i $(SED_EXTENSION) '/\/newtikv"/s/\/\///' main.go
-	go build -tags=jsoniter -ldflags '$(GOLDFLAGS)' -o tikv-proxy main.go
+	go build -tags=jsoniter -ldflags '$(GOLDFLAGS)' -o bin/tikv-proxy main.go
 
+test:
+	go test -v $(REPO_PATH)/... --conf=$(WORK_DIR)/example/server.toml
 
 .PHONY: tikv

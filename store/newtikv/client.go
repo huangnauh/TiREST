@@ -131,6 +131,15 @@ func (t *TiKV) List(start, end []byte, limit int, option store.ListOption) ([]st
 		return nil, xerror.ErrGetTimestampFailed
 	}
 
+	if option.KeyOnly {
+		tx.SetOption(kv.KeyOnly, true)
+	}
+
+	if option.ReplicaRead {
+		snapshot := tx.GetSnapshot()
+		snapshot.SetOption(kv.ReplicaRead, kv.ReplicaReadFollower)
+	}
+
 	s := kv.Key(start)
 	e := kv.Key(end)
 
@@ -147,15 +156,6 @@ func (t *TiKV) List(start, end []byte, limit int, option store.ListOption) ([]st
 	}
 
 	defer it.Close()
-
-	if option.KeyOnly {
-		tx.SetOption(kv.KeyOnly, true)
-	}
-
-	if option.ReplicaRead {
-		snapshot := tx.GetSnapshot()
-		snapshot.SetOption(kv.ReplicaRead, kv.ReplicaReadFollower)
-	}
 
 	ret := make([]store.KeyValue, 0)
 	for it.Valid() && limit > 0 {
@@ -339,7 +339,7 @@ func (t *TiKV) doUnsafeDestroyRangeRequest(ctx context.Context, startKey []byte,
 	t.log.Infof("start unsafe delete (%s-%s)", startKey, endKey)
 	stores, err := t.getUpStoresForGC(ctx)
 	if err != nil {
-		t.log.Errorf("delete ranges: get store list from PD", err)
+		t.log.Errorf("delete ranges: get store list from PD, %s", err)
 		return err
 	}
 
@@ -373,7 +373,7 @@ func (t *TiKV) doUnsafeDestroyRangeRequest(ctx context.Context, startKey []byte,
 			errStr := (resp.Resp.(*kvrpcpb.UnsafeDestroyRangeResponse)).Error
 			if len(errStr) > 0 {
 				failed = true
-				t.log.Errorf("unsafe destroy range failed on store %v: %s", storeID, errStr)
+				t.log.Errorf("unsafe destroy range failed on store %d: %s", storeID, errStr)
 				return
 			}
 		}()

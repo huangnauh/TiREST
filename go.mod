@@ -6,7 +6,6 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/DeanThompson/ginpprof v0.0.0-20190408063150-3be636683586
 	github.com/Shopify/sarama v1.26.4
-	github.com/bsm/sarama-cluster v2.1.16-0.20190423073834-d5779253526c+incompatible
 	github.com/gin-gonic/gin v1.6.3
 	github.com/golang/protobuf v1.3.4
 	github.com/google/gopacket v1.1.17

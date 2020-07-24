@@ -1,0 +1,16 @@
+stages:
+  - test
+  - build
+
+compile-alpine:
+  stage: test
+  image: golang:1.14-alpine
+  script:
+    - apk add --no-cache --virtual .build-deps git make
+    - make tikv
+    - make test
+  tags:
+    - offline-test
+  artifacts:
+    paths:
+      - bin

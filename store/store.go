@@ -118,26 +118,31 @@ func NewStore(conf *config.Config) (*Store, error) {
 	}, nil
 }
 
-func (s *Store) Open() {
-	go func() {
-		cDriver := cDrivers[s.conf.Connector.Name]
-		connector, err := cDriver.Open(s.conf)
-		if err != nil {
-			s.log.Errorf("open connector %s failed, %s", s.conf.Connector.Name, err)
-		} else {
-			s.connector = connector
-		}
-	}()
+func (s *Store) OpenConnector() error {
+	cDriver := cDrivers[s.conf.Connector.Name]
+	connector, err := cDriver.Open(s.conf)
+	if err != nil {
+		s.log.Errorf("open connector %s failed, %s", s.conf.Connector.Name, err)
+	} else {
+		s.connector = connector
+	}
+	return err
+}
 
-	go func() {
-		dDriver := dDrivers[s.conf.Store.Name]
-		db, err := dDriver.Open(s.conf)
-		if err != nil {
-			s.log.Errorf("open db %s failed, %s", s.conf.Store.Name, err)
-		} else {
-			s.db = db
-		}
-	}()
+func (s *Store) OpenDatabase() error {
+	dDriver := dDrivers[s.conf.Store.Name]
+	db, err := dDriver.Open(s.conf)
+	if err != nil {
+		s.log.Errorf("open db %s failed, %s", s.conf.Store.Name, err)
+	} else {
+		s.db = db
+	}
+	return err
+}
+
+func (s *Store) Open() {
+	go s.OpenConnector()
+	go s.OpenDatabase()
 }
 
 func (s *Store) Close() error {

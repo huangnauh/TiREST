@@ -3,7 +3,6 @@ package commands
 import (
 	"context"
 	"github.com/Shopify/sarama"
-	"github.com/bsm/sarama-cluster"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	"gitlab.s.upyun.com/platform/tikv-proxy/config"
@@ -11,7 +10,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
 func init() {
@@ -36,6 +34,12 @@ func init() {
 				Usage:   "consumer group definition",
 				Value:   "test",
 			},
+			&cli.IntFlag{
+				Name:    "limit",
+				Aliases: []string{"l"},
+				Usage:   "limit consumer",
+				Value:   10,
+			},
 		},
 		Action: runConsumer,
 	})
@@ -44,6 +48,7 @@ func init() {
 func runConsumer(c *cli.Context) error {
 	oldest := c.Bool("oldest")
 	group := c.String("group")
+	limit := c.Int("limit")
 	configFile := c.String("config")
 	conf, err := config.InitConfig(configFile)
 	if err != nil {
@@ -63,46 +68,9 @@ func runConsumer(c *cli.Context) error {
 		cf.Consumer.Offsets.Initial = sarama.OffsetOldest
 	}
 
-	if cf.Version.IsAtLeast(sarama.V0_10_2_0) {
-		return runNewComsumerGroup(group, cf, conf)
-	} else {
-		return runOldComsumerGroup(group, cf, conf)
-	}
-}
-
-func runOldComsumerGroup(group string, cf *sarama.Config, conf *config.Config) error {
-	cc := cluster.NewConfig()
-	cc.Config = *cf
-	cc.Config.Consumer.Offsets.CommitInterval = time.Second
-	consumer, err := cluster.NewConsumer(conf.Connector.BrokerList, group, []string{conf.Connector.Topic}, cc)
-	if err != nil {
-		panic(err)
-	}
-	defer consumer.Close()
-	sigterm := make(chan os.Signal, 1)
-	signal.Notify(sigterm, syscall.SIGINT, syscall.SIGTERM)
-
-	for {
-		select {
-		case message, ok := <-consumer.Messages():
-			if ok {
-				logrus.Infof("Message claimed: value = %s, partition = %v, offset = %v, topic = %s",
-					string(message.Value), message.Partition, message.Offset, message.Topic)
-				consumer.MarkOffset(message, "") // mark message as processed
-			}
-		case err := <-consumer.Errors():
-			logrus.Errorf("Error from consumer: %v", err)
-			return err
-		case <-sigterm:
-			return nil
-		}
-	}
-	return nil
-}
-
-func runNewComsumerGroup(group string, cf *sarama.Config, conf *config.Config) error {
 	consumer := Consumer{
-		ready: make(chan bool),
+		done:  make(chan struct{}),
+		limit: limit,
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	client, err := sarama.NewConsumerGroup(conf.Connector.BrokerList, group, cf)
@@ -121,7 +89,6 @@ func runNewComsumerGroup(group string, cf *sarama.Config, conf *config.Config) e
 			}
 		}
 	}()
-	<-consumer.ready
 	logrus.Infof("consumer up and running!...")
 	sigterm := make(chan os.Signal, 1)
 	signal.Notify(sigterm, syscall.SIGINT, syscall.SIGTERM)
@@ -140,13 +107,13 @@ func runNewComsumerGroup(group string, cf *sarama.Config, conf *config.Config) e
 
 // Consumer represents a Sarama consumer group consumer
 type Consumer struct {
-	ready chan bool
+	done    chan struct{}
+	limit   int
+	consume int
 }
 
 // Setup is run at the beginning of a new session, before ConsumeClaim
 func (consumer *Consumer) Setup(sarama.ConsumerGroupSession) error {
-	// Mark the consumer as ready
-	close(consumer.ready)
 	return nil
 }
 
@@ -163,6 +130,10 @@ func (consumer *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, clai
 	// The `ConsumeClaim` itself is called within a goroutine, see:
 	// https://github.com/Shopify/sarama/blob/master/consumer_group.go#L27-L29
 	for message := range claim.Messages() {
+		if consumer.consume >= consumer.limit {
+			break
+		}
+		consumer.consume++
 		logrus.Infof("Message claimed: value = %s, partition = %v, offset = %v, topic = %s, timestamp %s",
 			string(message.Value), message.Partition, message.Offset, message.Topic, message.Timestamp)
 		session.MarkMessage(message, "")

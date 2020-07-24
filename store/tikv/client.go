@@ -53,7 +53,7 @@ func (t *TiKV) Close() error {
 	return t.client.Close()
 }
 
-func (t *TiKV) Get(key []byte, option store.Option) (store.Value, error) {
+func (t *TiKV) Get(key []byte, option store.GetOption) (store.Value, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.ReadTimeout.Duration)
 	defer cancel()
 	tx, err := t.client.Begin(ctx)
@@ -77,7 +77,7 @@ func (t *TiKV) Get(key []byte, option store.Option) (store.Value, error) {
 	return store.Value{Secondary: secondary, Value: v}, nil
 }
 
-func (t *TiKV) List(start, end []byte, limit int, option store.Option) ([]store.KeyValue, error) {
+func (t *TiKV) List(start, end []byte, limit int, option store.ListOption) ([]store.KeyValue, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.ListTimeout.Duration)
 	defer cancel()
 	tx, err := t.client.Begin(ctx)
@@ -88,7 +88,15 @@ func (t *TiKV) List(start, end []byte, limit int, option store.Option) ([]store.
 		tx.SetOption(kv.KeyOnly, true)
 	}
 
-	it, err := tx.Iter(ctx, key.Key(start), key.Key(end))
+	s := key.Key(start)
+	e := key.Key(end)
+
+	var it kv.Iterator
+	if !option.Reverse {
+		it, err = tx.Iter(ctx, s, e)
+	} else {
+		it, err = tx.IterReverse(ctx, e)
+	}
 	if err != nil {
 		return nil, xerror.ErrListKVFailed
 	}
@@ -96,7 +104,16 @@ func (t *TiKV) List(start, end []byte, limit int, option store.Option) ([]store.
 
 	ret := make([]store.KeyValue, 0)
 	for it.Valid() && limit > 0 {
-		ret = append(ret, store.KeyValue{Key: utils.B2S(it.Key()), Value: utils.B2S(it.Value())})
+		k := it.Key()
+		v := it.Value()
+		k, v, err = option.Item(k, v)
+		if err != nil {
+			continue
+		}
+		if key.Key(k).Cmp(s) < 0 || key.Key(k).Cmp(e) >= 0 {
+			break
+		}
+		ret = append(ret, store.KeyValue{Key: utils.B2S(k), Value: utils.B2S(v)})
 		limit--
 		err = it.Next(ctx)
 		if err != nil {
@@ -106,7 +123,7 @@ func (t *TiKV) List(start, end []byte, limit int, option store.Option) ([]store.
 	return ret, nil
 }
 
-func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte, check store.CheckFunc) error {
+func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte, option store.CheckOption) error {
 	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.WriteTimeout.Duration)
 	defer cancel()
 	tx, err := t.client.Begin(ctx)
@@ -121,8 +138,8 @@ func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte, check store.CheckFunc) er
 		return xerror.ErrGetKVFailed
 	}
 
-	if check != nil {
-		newVal, err = check(oldVal, newVal, existVal)
+	if option.Check != nil {
+		newVal, err = option.Check(oldVal, newVal, existVal)
 		if err != nil {
 			return err
 		}
