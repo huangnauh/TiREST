@@ -68,11 +68,13 @@ func (d Driver) Open(conf *config.Config) (store.DB, error) {
 		log:        logrus.WithFields(logrus.Fields{"worker": DBName}),
 	}
 
-	if raw, ok := s.(tikv.EtcdBackend); ok {
-		tikv.NewGCHandlerFunc = t.NewGCWorker
-		err = raw.StartGCWorker()
-		if err != nil {
-			return nil, err
+	if conf.Store.GCEnable {
+		if raw, ok := s.(tikv.EtcdBackend); ok {
+			tikv.NewGCHandlerFunc = t.NewGCWorker
+			err = raw.StartGCWorker()
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -158,20 +160,26 @@ func (t *TiKV) List(start, end []byte, limit int, option store.ListOption) ([]st
 	defer it.Close()
 
 	ret := make([]store.KeyValue, 0)
-	for it.Valid() && limit > 0 {
+	for it.Valid() {
 		k := it.Key()
-		v := it.Value()
-		k, v, err = option.Item(k, v)
-		if err != nil {
-			continue
-		}
-
+		t.log.Debugf("iter key %v", k)
 		if kv.Key(k).Cmp(s) < 0 || kv.Key(k).Cmp(e) >= 0 {
 			break
 		}
 
+		v := it.Value()
+		k, v, err = option.Item(k, v)
+		if err != nil {
+			t.log.Warnf("iter (%s-%s) key %s, err %s", start, end, k, err)
+			continue
+		}
+
 		ret = append(ret, store.KeyValue{Key: utils.B2S(k), Value: utils.B2S(v)})
+
 		limit--
+		if limit <= 0 {
+			break
+		}
 		err = it.Next()
 		if err != nil {
 			t.log.Errorf("iter next (%s-%s) failed %s", err, start, end)

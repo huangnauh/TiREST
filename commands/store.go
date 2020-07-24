@@ -23,15 +23,15 @@ func init() {
 				Usage:   "proxy config",
 				Value:   "./server.toml",
 			},
-			//&cli.StringFlag{
-			//	Name:    "store-type",
-			//	Aliases: []string{"t"},
-			//	Usage:   "store type",
-			//	Value:   "meta",
-			//},
 			&cli.BoolFlag{
 				Name:  "raw",
 				Usage: "raw key",
+			},
+			&cli.UintFlag{
+				Name:    "verbose",
+				Aliases: []string{"vb"},
+				Usage:   "verbose info(2 error, 3 warn, 4 info, 5 debug)",
+				Value:   2,
 			},
 		},
 		Subcommands: []*cli.Command{
@@ -54,7 +54,7 @@ func init() {
 				Usage:     "get the value for the key in the tikv store",
 				ArgsUsage: "KEY VALUE",
 				Action: func(c *cli.Context) error {
-					if c.NArg() != 2 {
+					if c.NArg() != 1 {
 						return errors.New("invalid KEY VALUE")
 					}
 					if err := runKVGet(c); err != nil {
@@ -95,6 +95,7 @@ func init() {
 						Name:    "limit",
 						Aliases: []string{"l"},
 						Usage:   "limit",
+						Value:   10,
 					},
 					&cli.BoolFlag{
 						Name:    "reverse",
@@ -114,14 +115,20 @@ func init() {
 }
 
 func getStore(c *cli.Context) (*store.Store, error) {
+	verbose := c.Uint("verbose")
+	if verbose > 5 {
+		return nil, errors.New("invalid verbose")
+	}
+	level := logrus.Level(verbose)
+	logrus.SetLevel(level)
 	configFile := c.String("config")
 	conf, err := config.InitConfig(configFile)
 	if err != nil {
-		logrus.Errorf("init config failed, err: %s", err)
+		fmt.Printf("init config failed, err: %s\n", err)
 		return nil, err
 	}
-	conf.Log.ErrorLogDir = ""
-	conf.Log.AccessLogDir = ""
+	conf.Log.Level = level.String()
+	conf.Store.GCEnable = false
 	s, err := store.NewStore(conf)
 	if err != nil {
 		return nil, err
@@ -139,13 +146,20 @@ func runKVPut(c *cli.Context) error {
 	raw := c.IsSet("raw")
 	meta, err := server.EncodeMetaKey(key, raw)
 	if err != nil {
+		fmt.Printf("encode key, err: %s\n", err)
 		return err
 	}
+	fmt.Printf("encode key, %v\n", meta)
 	s, err := getStore(c)
 	if err != nil {
 		return err
 	}
-	return s.UnsafePut(meta, utils.S2B(value))
+	err = s.UnsafePut(meta, utils.S2B(value))
+	if err != nil {
+		fmt.Printf("put %s err: %s\n", meta, err)
+		return err
+	}
+	return nil
 }
 
 func runKVDelete(c *cli.Context) error {
@@ -153,13 +167,20 @@ func runKVDelete(c *cli.Context) error {
 	raw := c.IsSet("raw")
 	meta, err := server.EncodeMetaKey(key, raw)
 	if err != nil {
+		fmt.Printf("encode key, err: %s\n", err)
 		return err
 	}
+	fmt.Printf("encode key, %v\n", meta)
 	s, err := getStore(c)
 	if err != nil {
 		return err
 	}
-	return s.UnsafePut(meta, nil)
+	err = s.UnsafePut(meta, nil)
+	if err != nil {
+		fmt.Printf("del %s err: %s\n", meta, err)
+		return err
+	}
+	return nil
 }
 
 func runKVGet(c *cli.Context) error {
@@ -167,14 +188,17 @@ func runKVGet(c *cli.Context) error {
 	raw := c.IsSet("raw")
 	meta, err := server.EncodeMetaKey(key, raw)
 	if err != nil {
+		fmt.Printf("encode key, err: %s\n", err)
 		return err
 	}
+	fmt.Printf("encode key, %v\n", meta)
 	s, err := getStore(c)
 	if err != nil {
 		return err
 	}
 	v, err := s.Get(meta, server.DefaultGetOption())
 	if err != nil {
+		fmt.Printf("get %s err: %s\n", meta, err)
 		return err
 	}
 	fmt.Printf("Value: %s\n", v.Value)
@@ -190,12 +214,16 @@ func runKVList(c *cli.Context) error {
 
 	st, err := server.EncodeMetaKey(start, raw)
 	if err != nil {
+		fmt.Printf("encode start, err: %s\n", err)
 		return err
 	}
+	fmt.Printf("encode start, %v\n", st)
 	en, err := server.EncodeMetaKey(end, raw)
 	if err != nil {
+		fmt.Printf("encode key, err: %s\n", err)
 		return err
 	}
+	fmt.Printf("encode end, %v\n", en)
 	s, err := getStore(c)
 	if err != nil {
 		return err
@@ -204,6 +232,7 @@ func runKVList(c *cli.Context) error {
 	opt.Reverse = reverse
 	items, err := s.List(st, en, limit, opt)
 	if err != nil {
+		fmt.Printf("list %s-%s err: %s\n", st, en, err)
 		return err
 	}
 	for _, item := range items {

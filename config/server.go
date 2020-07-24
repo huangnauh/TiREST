@@ -37,6 +37,7 @@ type Connector struct {
 type Store struct {
 	Name               string    `toml:"name"`
 	Path               string    `toml:"path"`
+	GCEnable           bool      `toml:"gc-enable"`
 	PdAddresses        []string  `toml:"pd-address"`
 	ReadTimeout        *Duration `toml:"read-timeout"`
 	ListTimeout        *Duration `toml:"list-timeout"`
@@ -89,6 +90,7 @@ func DefaultConfig() *Config {
 			Name:               "tikv",
 			Path:               "tikv://127.0.0.1:2379",
 			PdAddresses:        []string{"127.0.0.1:2379"},
+			GCEnable:           true,
 			ReadTimeout:        &Duration{10 * time.Second},
 			WriteTimeout:       &Duration{10 * time.Second},
 			ListTimeout:        &Duration{60 * time.Second},

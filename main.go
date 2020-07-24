@@ -22,8 +22,7 @@ func realMain() int {
 	app.Version = fmt.Sprintf("%s (%s), api:%s, runtime:%s/%s %s", version.GitDescribe,
 		version.GitCommit, version.API,
 		runtime.GOOS, runtime.GOARCH, runtime.Version())
-	app.Name = version.APP
-	app.Usage = "storage dashboard server"
+	app.Usage = "tikv proxy"
 	app.Commands = commands.AllCommands()
 	app.EnableBashCompletion = true
 	app.Flags = commands.AllFlags()

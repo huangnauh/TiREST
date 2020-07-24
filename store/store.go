@@ -219,7 +219,7 @@ func (s *Store) List(start, end []byte, limit int, option ListOption) ([]KeyValu
 		s.log.Errorf("list (%s-%s) limit %d, %s", start, end, limit, err)
 		return nil, err
 	}
-	s.log.Debugf("list %d items (%s-%s)", len(res), start, end)
+	s.log.Debugf("list %d items (%v-%v)", len(res), start, end)
 	return res, nil
 }
 

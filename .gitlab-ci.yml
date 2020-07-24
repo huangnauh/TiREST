@@ -6,7 +6,7 @@ compile-alpine:
   stage: test
   image: golang:1.14-alpine
   script:
-    - apk add --no-cache --virtual .build-deps git make
+    - apk add --no-cache --virtual .build-deps git make gcc musl-dev
     - make tikv
     - make test
   tags:

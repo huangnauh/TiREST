@@ -1,5 +1,5 @@
-APP=tikv-proxy
-REPO_PATH=gitlab.s.upyun.com/platform/$(APP)
+PROG=tikv-proxy
+REPO_PATH=gitlab.s.upyun.com/platform/$(PROG)
 GIT_COMMIT=$(shell git rev-parse --short HEAD)
 GIT_DESCRIBE=$(shell git describe --tags --always)
 IMPORT=$(REPO_PATH)/version

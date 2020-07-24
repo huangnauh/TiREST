@@ -103,18 +103,23 @@ func (t *TiKV) List(start, end []byte, limit int, option store.ListOption) ([]st
 	defer it.Close()
 
 	ret := make([]store.KeyValue, 0)
-	for it.Valid() && limit > 0 {
+	for it.Valid() {
 		k := it.Key()
+		if key.Key(k).Cmp(s) < 0 || key.Key(k).Cmp(e) >= 0 {
+			break
+		}
+
 		v := it.Value()
 		k, v, err = option.Item(k, v)
 		if err != nil {
 			continue
 		}
-		if key.Key(k).Cmp(s) < 0 || key.Key(k).Cmp(e) >= 0 {
-			break
-		}
+
 		ret = append(ret, store.KeyValue{Key: utils.B2S(k), Value: utils.B2S(v)})
 		limit--
+		if limit <= 0 {
+			break
+		}
 		err = it.Next(ctx)
 		if err != nil {
 			return nil, xerror.ErrListKVFailed
