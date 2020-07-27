@@ -98,9 +98,11 @@ func (s *Server) registerRoutes() error {
 	api.PUT("/meta/:key", s.CheckAndPut)
 	api.POST("/meta/:key", s.CheckAndPut)
 	api.DELETE("/list/", s.AsyncBatchDelete)
+	api.DELETE("/list", s.AsyncBatchDelete)
 	api.GET("/list/", s.List)
-	api.GET("/config/", s.GetConfig)
-	api.GET("/health/", s.Health)
+	api.GET("/list", s.List)
+	api.GET("/config", s.GetConfig)
+	api.GET("/health", s.Health)
 
 	unsafe := api.Group(UnsafeRoute)
 	unsafe.DELETE("/meta/:key", s.UnsafeDelete)

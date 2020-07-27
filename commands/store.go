@@ -10,6 +10,7 @@ import (
 	"gitlab.s.upyun.com/platform/tikv-proxy/store"
 	_ "gitlab.s.upyun.com/platform/tikv-proxy/store/newtikv"
 	"gitlab.s.upyun.com/platform/tikv-proxy/utils"
+	"strconv"
 )
 
 func init() {
@@ -26,6 +27,7 @@ func init() {
 			&cli.BoolFlag{
 				Name:  "raw",
 				Usage: "raw key",
+				Value: true,
 			},
 			&cli.UintFlag{
 				Name:    "verbose",
@@ -140,10 +142,22 @@ func getStore(c *cli.Context) (*store.Store, error) {
 	return s, nil
 }
 
+func unquote(s string) (string, error) {
+	fmt.Printf("unquote before %v\n", s)
+	s, err := strconv.Unquote(`"` + s + `"`)
+	fmt.Printf("unquote after %v\n", s)
+	return s, err
+}
+
 func runKVPut(c *cli.Context) error {
 	key := c.Args().Get(0)
 	value := c.Args().Get(1)
 	raw := c.IsSet("raw")
+	key, err := unquote(key)
+	if err != nil {
+		fmt.Printf("unquote key, err: %s\n", err)
+		return err
+	}
 	meta, err := server.EncodeMetaKey(key, raw)
 	if err != nil {
 		fmt.Printf("encode key, err: %s\n", err)
@@ -165,6 +179,11 @@ func runKVPut(c *cli.Context) error {
 func runKVDelete(c *cli.Context) error {
 	key := c.Args().Get(0)
 	raw := c.IsSet("raw")
+	key, err := unquote(key)
+	if err != nil {
+		fmt.Printf("unquote key, err: %s\n", err)
+		return err
+	}
 	meta, err := server.EncodeMetaKey(key, raw)
 	if err != nil {
 		fmt.Printf("encode key, err: %s\n", err)
@@ -186,6 +205,11 @@ func runKVDelete(c *cli.Context) error {
 func runKVGet(c *cli.Context) error {
 	key := c.Args().Get(0)
 	raw := c.IsSet("raw")
+	key, err := unquote(key)
+	if err != nil {
+		fmt.Printf("unquote key, err: %s\n", err)
+		return err
+	}
 	meta, err := server.EncodeMetaKey(key, raw)
 	if err != nil {
 		fmt.Printf("encode key, err: %s\n", err)
@@ -208,7 +232,19 @@ func runKVGet(c *cli.Context) error {
 func runKVList(c *cli.Context) error {
 	raw := c.IsSet("raw")
 	start := c.String("start")
+	start, err := unquote(start)
+	if err != nil {
+		fmt.Printf("unquote start, err: %s\n", err)
+		return err
+	}
+
 	end := c.String("end")
+	end, err = unquote(end)
+	if err != nil {
+		fmt.Printf("unquote end, err: %s\n", err)
+		return err
+	}
+
 	limit := c.Int("limit")
 	reverse := c.Bool("reverse")
 
@@ -236,7 +272,8 @@ func runKVList(c *cli.Context) error {
 		return err
 	}
 	for _, item := range items {
-		fmt.Printf("Key: %s, Value: %s\n", item.Key, item.Value)
+		fmt.Printf("Key: %s\n", item.Key)
+		fmt.Printf("Value: %s\n", item.Value)
 	}
 	return nil
 }

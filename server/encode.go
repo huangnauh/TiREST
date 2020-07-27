@@ -36,7 +36,7 @@ func ItemFunc(key, val []byte) ([]byte, []byte, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	return key[1:], val, nil
+	return key, val, nil
 }
 
 func encodeKey(t byte, s string) ([]byte, error) {

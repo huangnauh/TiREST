@@ -102,7 +102,7 @@ func (t *TiKV) Get(key []byte, option store.GetOption) (store.Value, error) {
 	if err != nil {
 		return store.NoValue, xerror.ErrGetTimestampFailed
 	}
-	t.log.Debugf("start ts %d", tx.StartTS())
+	t.log.Debugf("start ts %d, %s", tx.StartTS(), kv.Key(key))
 	if option.ReplicaRead {
 		snapshot := tx.GetSnapshot()
 		snapshot.SetOption(kv.ReplicaRead, kv.ReplicaReadFollower)

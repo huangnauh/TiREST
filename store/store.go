@@ -197,7 +197,7 @@ func (s *Store) CheckAndPut(key, entry []byte, option CheckOption) error {
 	}
 
 	err = s.db.CheckAndPut(key, utils.S2B(l.Old), utils.S2B(l.New), option)
-	if err != nil {
+	if err != nil && err != xerror.ErrAlreadyExists {
 		s.log.Errorf("key %s cas failed, %s", key, err)
 		return err
 	}

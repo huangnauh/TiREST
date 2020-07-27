@@ -42,8 +42,8 @@ enable-tracing = true
 
 [log]
   level = "debug"
-  error-log-dir = "std"
-  access-log-dir = ""
+  error-log-dir = ""
+  access-log-dir = "std"
   buffer-size = 102400
   max-bytes = 536870912
   backup_count = 10

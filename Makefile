@@ -23,9 +23,9 @@ endif
 tikv:
 #	git checkout main.go
 #	sed -i $(SED_EXTENSION) '/\/newtikv"/s/\/\///' main.go
-	go build -tags=jsoniter -ldflags '$(GOLDFLAGS)' -o bin/tikv-proxy main.go
+	go build -tags=jsoniter -ldflags '$(GOLDFLAGS)' -o bin/tikv-proxy$(GOOS) main.go
 
 test:
-	go test -v $(REPO_PATH)/... --conf=$(WORK_DIR)/example/server.toml
+	go test -tags=jsoniter -v $(REPO_PATH)/... --conf=$(WORK_DIR)/example/server.toml
 
 .PHONY: tikv

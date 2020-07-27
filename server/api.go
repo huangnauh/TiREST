@@ -177,6 +177,7 @@ func (s *Server) List(c *gin.Context) {
 	if l.Limit <= 0 || l.Limit > 10000 {
 		l.Limit = 10000
 	}
+	s.log.Debugf("list (%s-%s), limit %d, reverse %t", start, end, l.Limit, l.Reverse)
 
 	opts := DefaultListOption()
 	if l.KeyOnly {

@@ -10,6 +10,7 @@ require (
 	github.com/golang/protobuf v1.3.4
 	github.com/google/gopacket v1.1.17
 	github.com/json-iterator/go v1.1.9
+	github.com/mozillazg/go-httpheader v0.2.1
 	github.com/nsqio/go-diskqueue v1.0.0
 	github.com/pingcap/kvproto v0.0.0-20200518112156-d4aeb467de29
 	github.com/pingcap/pd/v4 v4.0.0-rc.2.0.20200520083007-2c251bd8f181
