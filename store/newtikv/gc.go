@@ -106,7 +106,7 @@ func (w *GCWorker) tickLock(ctx context.Context) {
 
 func (w *GCWorker) tick(ctx context.Context) {
 	w.log.Info("gc start")
-	safePoint, newSafePointValue, err := w.calculateNewSafePoint(ctx)
+	safePoint, newSafePointValue, err := w.calculateNewSafePoint()
 	if err != nil {
 		w.log.Errorf("calculateNewSafePoint failed %s", err)
 		return
@@ -157,7 +157,7 @@ func (w *GCWorker) getOracleTime() (time.Time, error) {
 	return time.Unix(sec, nsec), nil
 }
 
-func (w *GCWorker) calculateNewSafePoint(ctx context.Context) (time.Time, uint64, error) {
+func (w *GCWorker) calculateNewSafePoint() (time.Time, uint64, error) {
 	now, err := w.getOracleTime()
 	if err != nil {
 		return time.Time{}, 0, err

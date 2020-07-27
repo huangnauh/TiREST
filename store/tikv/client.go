@@ -191,6 +191,33 @@ func (t *TiKV) Put(key, val []byte) error {
 	return nil
 }
 
+func (t *TiKV) BatchPut(items []store.KeyEntry) error {
+	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.BatchPutTimeout.Duration)
+	defer cancel()
+	tx, err := t.client.Begin(ctx)
+	if err != nil {
+		return xerror.ErrGetTimestampFailed
+	}
+
+	for _, item := range items {
+		if len(item.Entry) == 0 {
+			err = tx.Delete(item.Key)
+		} else {
+			err = tx.Set(item.Key, item.Entry)
+		}
+	}
+
+	if err != nil {
+		return xerror.ErrSetKVFailed
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return xerror.ErrCommitKVFailed
+	}
+	return nil
+}
+
 func (t *TiKV) BatchDelete(start, end []byte, limit int) ([]byte, int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.BatchDeleteTimeout.Duration)
 	defer cancel()
@@ -235,6 +262,6 @@ func (t *TiKV) BatchDelete(start, end []byte, limit int) ([]byte, int, error) {
 	return lastKey, count, nil
 }
 
-func (t *TiKV) UnsafeDelete(start, end []byte) error {
+func (t *TiKV) UnsafeDelete(_, _ []byte) error {
 	return nil
 }

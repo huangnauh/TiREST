@@ -192,16 +192,16 @@ func (s *Server) List(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
-	} else {
-		jsonBytes, err := json.Marshal(keyEntry)
-		if err != nil {
-			s.log.Errorf("list failed, %s", err)
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		c.Header("Content-Length", strconv.Itoa(len(jsonBytes)))
-		c.Data(http.StatusOK, "application/json", jsonBytes)
 	}
+
+	jsonBytes, err := json.Marshal(keyEntry)
+	if err != nil {
+		s.log.Errorf("list failed, %s", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.Header("Content-Length", strconv.Itoa(len(jsonBytes)))
+	c.Data(http.StatusOK, "application/json", jsonBytes)
 }
 
 func (s *Server) AsyncBatchDelete(c *gin.Context) {

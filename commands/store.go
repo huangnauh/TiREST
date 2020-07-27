@@ -8,7 +8,6 @@ import (
 	"gitlab.s.upyun.com/platform/tikv-proxy/config"
 	"gitlab.s.upyun.com/platform/tikv-proxy/server"
 	"gitlab.s.upyun.com/platform/tikv-proxy/store"
-	_ "gitlab.s.upyun.com/platform/tikv-proxy/store/newtikv"
 	"gitlab.s.upyun.com/platform/tikv-proxy/utils"
 	"strconv"
 )
@@ -45,10 +44,7 @@ func init() {
 					if c.NArg() != 2 {
 						return errors.New("invalid KEY VALUE")
 					}
-					if err := runKVPut(c); err != nil {
-						return err
-					}
-					return nil
+					return runKVPut(c)
 				},
 			},
 			{
@@ -59,10 +55,7 @@ func init() {
 					if c.NArg() != 1 {
 						return errors.New("invalid KEY VALUE")
 					}
-					if err := runKVGet(c); err != nil {
-						return err
-					}
-					return nil
+					return runKVGet(c)
 				},
 			},
 			{
@@ -73,10 +66,7 @@ func init() {
 					if c.NArg() != 1 {
 						return errors.New("invalid KEY")
 					}
-					if err := runKVDelete(c); err != nil {
-						return err
-					}
-					return nil
+					return runKVDelete(c)
 				},
 			},
 			{
@@ -105,12 +95,7 @@ func init() {
 						Usage:   "reverse",
 					},
 				},
-				Action: func(c *cli.Context) error {
-					if err := runKVList(c); err != nil {
-						return err
-					}
-					return nil
-				},
+				Action: runKVList,
 			},
 		},
 	})
@@ -134,9 +119,7 @@ func getStore(c *cli.Context) (*store.Store, error) {
 }
 
 func unquote(s string) (string, error) {
-	fmt.Printf("unquote before %v\n", s)
 	s, err := strconv.Unquote(`"` + s + `"`)
-	fmt.Printf("unquote after %v\n", s)
 	return s, err
 }
 

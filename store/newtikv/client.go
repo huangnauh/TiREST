@@ -100,9 +100,10 @@ func (t *TiKV) Close() error {
 func (t *TiKV) Get(key []byte, option store.GetOption) (store.Value, error) {
 	tx, err := t.client.Begin()
 	if err != nil {
+		t.log.Errorf("client begin failed %s", err)
 		return store.NoValue, xerror.ErrGetTimestampFailed
 	}
-	t.log.Debugf("start ts %d, %s", tx.StartTS(), kv.Key(key))
+	t.log.Debugf("start ts %d, %s", tx.StartTS(), key)
 	if option.ReplicaRead {
 		snapshot := tx.GetSnapshot()
 		snapshot.SetOption(kv.ReplicaRead, kv.ReplicaReadFollower)
@@ -121,6 +122,7 @@ func (t *TiKV) Get(key []byte, option store.GetOption) (store.Value, error) {
 		return store.NoValue, xerror.ErrNotExists
 	}
 	if err != nil {
+		t.log.Errorf("get %s failed %s", key, err)
 		return store.NoValue, xerror.ErrGetKVFailed
 	}
 	return store.Value{Secondary: secondary, Value: v}, nil
@@ -192,6 +194,7 @@ func (t *TiKV) List(start, end []byte, limit int, option store.ListOption) ([]st
 func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte, check store.CheckOption) error {
 	tx, err := t.client.Begin()
 	if err != nil {
+		t.log.Errorf("client begin failed %s", err)
 		return xerror.ErrGetTimestampFailed
 	}
 
@@ -202,6 +205,7 @@ func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte, check store.CheckOption) 
 	if kv.IsErrNotFound(err) {
 		existVal = nil
 	} else if err != nil {
+		t.log.Errorf("cas %s get failed %s", key, err)
 		return xerror.ErrGetKVFailed
 	}
 
@@ -219,11 +223,13 @@ func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte, check store.CheckOption) 
 	}
 
 	if err != nil {
+		t.log.Errorf("cas %s put failed %s", key, err)
 		return xerror.ErrSetKVFailed
 	}
 
 	err = tx.Commit(ctx)
 	if err != nil {
+		t.log.Errorf("cas %s commit failed %s", key, err)
 		return xerror.ErrCommitKVFailed
 	}
 	return nil
@@ -232,6 +238,7 @@ func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte, check store.CheckOption) 
 func (t *TiKV) Put(key, val []byte) error {
 	tx, err := t.client.Begin()
 	if err != nil {
+		t.log.Errorf("client begin failed %s", err)
 		return xerror.ErrGetTimestampFailed
 	}
 
@@ -242,6 +249,7 @@ func (t *TiKV) Put(key, val []byte) error {
 	}
 
 	if err != nil {
+		t.log.Errorf("put %s put failed %s", key, err)
 		return xerror.ErrSetKVFailed
 	}
 
@@ -249,6 +257,7 @@ func (t *TiKV) Put(key, val []byte) error {
 	defer cancel()
 	err = tx.Commit(ctx)
 	if err != nil {
+		t.log.Errorf("put %s commit failed %s", key, err)
 		return xerror.ErrCommitKVFailed
 	}
 	return nil
@@ -257,6 +266,7 @@ func (t *TiKV) Put(key, val []byte) error {
 func (t *TiKV) BatchPut(items []store.KeyEntry) error {
 	tx, err := t.client.Begin()
 	if err != nil {
+		t.log.Errorf("begin failed %s", err)
 		return xerror.ErrGetTimestampFailed
 	}
 
@@ -269,6 +279,7 @@ func (t *TiKV) BatchPut(items []store.KeyEntry) error {
 	}
 
 	if err != nil {
+		t.log.Errorf("put failed %s", err)
 		return xerror.ErrSetKVFailed
 	}
 
@@ -276,6 +287,7 @@ func (t *TiKV) BatchPut(items []store.KeyEntry) error {
 	defer cancel()
 	err = tx.Commit(ctx)
 	if err != nil {
+		t.log.Errorf("batch put commit failed %s", err)
 		return xerror.ErrCommitKVFailed
 	}
 	return nil
@@ -284,11 +296,13 @@ func (t *TiKV) BatchPut(items []store.KeyEntry) error {
 func (t *TiKV) BatchDelete(start, end []byte, limit int) ([]byte, int, error) {
 	tx, err := t.client.Begin()
 	if err != nil {
+		t.log.Errorf("begin failed %s", err)
 		return nil, 0, xerror.ErrGetTimestampFailed
 	}
 
 	it, err := tx.Iter(kv.Key(start), kv.Key(end))
 	if err != nil {
+		t.log.Errorf("iter (%s-%s) failed %s", start, end, err)
 		return nil, 0, xerror.ErrListKVFailed
 	}
 	defer it.Close()

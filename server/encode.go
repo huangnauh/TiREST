@@ -12,9 +12,8 @@ const (
 func EncodeMetaKey(s string, raw bool) ([]byte, error) {
 	if !raw {
 		return encodeKey(MetaType, s)
-	} else {
-		return encodeRawKey(MetaType, s)
 	}
+	return encodeRawKey(MetaType, s)
 }
 
 func encodeRawKey(t byte, s string) ([]byte, error) {

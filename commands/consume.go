@@ -6,7 +6,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	"gitlab.s.upyun.com/platform/tikv-proxy/config"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -61,7 +60,8 @@ func runConsumer(c *cli.Context) error {
 
 	cf.Version, err = sarama.ParseKafkaVersion(conf.Connector.Version)
 	if err != nil {
-		log.Panicf("Error parsing version: %v", err)
+		logrus.Errorf("Error parsing version: %v", err)
+		return err
 	}
 	logrus.Infof("version %s", cf.Version)
 	if oldest {
@@ -94,13 +94,14 @@ func runConsumer(c *cli.Context) error {
 	signal.Notify(sigterm, syscall.SIGINT, syscall.SIGTERM)
 	select {
 	case <-ctx.Done():
-		log.Println("terminating: context cancelled")
+		logrus.Info("terminating: context cancelled")
 	case <-sigterm:
-		log.Println("terminating: via signal")
+		logrus.Info("terminating: via signal")
 	}
 	cancel()
 	if err = client.Close(); err != nil {
-		log.Panicf("Error closing client: %v", err)
+		logrus.Errorf("Error closing client: %v", err)
+		return err
 	}
 	return nil
 }

@@ -25,7 +25,10 @@ tikv:
 #	sed -i $(SED_EXTENSION) '/\/newtikv"/s/\/\///' main.go
 	go build -tags=jsoniter -ldflags '$(GOLDFLAGS)' -o bin/tikv-proxy$(GOOS) main.go
 
-test:
+lint:
+	revive -config ./revive.toml -formatter friendly ./...
+
+test: lint
 	go test -tags=jsoniter -v $(REPO_PATH)/... --conf=$(WORK_DIR)/example/server.toml
 
-.PHONY: tikv
+.PHONY: tikv test lint

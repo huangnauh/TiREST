@@ -54,10 +54,9 @@ func runServer(c *cli.Context) error {
 		if err != nil {
 			logrus.Errorf("init error log failed, err: %s", err)
 			return err
-		} else {
-			defer output.Close()
-			logrus.SetOutput(output)
 		}
+		defer output.Close()
+		logrus.SetOutput(output)
 	} else {
 		logrus.SetOutput(os.Stderr)
 	}
