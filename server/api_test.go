@@ -59,7 +59,10 @@ func newApiTest() (s *Server) {
 	if err != nil {
 		panic(err)
 	}
-	s.store.Open()
+	err = s.store.OpenDatabase()
+	if err != nil {
+		panic(err)
+	}
 	time.Sleep(time.Second)
 	return
 }
@@ -84,10 +87,30 @@ func error2HttpCode(err error) int {
 	return http.StatusNoContent
 }
 
-func TestMeta(t *testing.T) {
+type listTestCase struct {
+	Name  string
+	Key   []byte
+	Value []byte
+}
+
+var listTestCases = []listTestCase{
+	{"key_1", []byte("\x001111"), []byte(`{"updated_at": 100, "key_1": true}`)},
+	{"key_2", []byte("\x002222"), []byte(`{"updated_at": 100, "key_2": true}`)},
+}
+
+func reverseListTestCases() []listTestCase {
+	listTC := make([]listTestCase, len(listTestCases))
+	copy(listTC, listTestCases)
+	for i, j := 0, len(listTC)-1; i < j; i, j = i+1, j-1 {
+		listTC[i], listTC[j] = listTC[j], listTC[i]
+	}
+	return listTC
+}
+
+func TestServer(t *testing.T) {
 	t.Parallel()
 	s := newApiTest()
-	t.Run("group", func(t *testing.T) {
+	t.Run("meta", func(t *testing.T) {
 		for _, tt := range checkTestCases {
 			tt := tt
 			t.Run(tt.Name, func(t *testing.T) {
@@ -180,199 +203,172 @@ func TestMeta(t *testing.T) {
 				assert.Nil(t, err)
 			})
 		}
-	})
-	s.Close()
-}
 
-type listTestCase struct {
-	Name  string
-	Key   []byte
-	Value []byte
-}
+		t.Run("put", func(t *testing.T) {
+			for _, tt := range listTestCases {
+				tt := tt
+				t.Run(tt.Name, func(t *testing.T) {
+					t.Parallel()
+					key := encodeBase64(tt.Key)
+					t.Logf("Key: %s", key)
+					body, err := json.Marshal(store.Log{New: utils.B2S(tt.Value)})
+					assert.Nil(t, err)
+					result := PerformRequest(s.router, http.MethodPut,
+						path.Join(ApiRoute, "meta", key), nil, bytes.NewReader(body))
+					res := result.Result()
+					assert.Equal(t, true, res.StatusCode < 300, fmt.Sprintf("Code %d", res.StatusCode))
+					assert.Equal(t, true, res.StatusCode >= 200, fmt.Sprintf("Code %d", res.StatusCode))
+					_, err = ioutil.ReadAll(res.Body)
+					assert.Nil(t, err)
+					err = res.Body.Close()
+					assert.Nil(t, err)
 
-var listTestCases = []listTestCase{
-	{"key_1", []byte("\x001111"), []byte(`{"updated_at": 100, "key_1": true}`)},
-	{"key_2", []byte("\x002222"), []byte(`{"updated_at": 100, "key_2": true}`)},
-}
+					result = PerformRequest(s.router, http.MethodGet,
+						path.Join(ApiRoute, "meta", key), nil, nil)
+					res = result.Result()
+					assert.Equal(t, http.StatusOK, res.StatusCode)
+					body, err = ioutil.ReadAll(res.Body)
+					assert.Nil(t, err)
+					assert.Equal(t, tt.Value, body)
+					err = res.Body.Close()
+					assert.Nil(t, err)
+				})
+			}
+		})
 
-func reverseListTestCases() []listTestCase {
-	listTC := make([]listTestCase, len(listTestCases))
-	copy(listTC, listTestCases)
-	for i, j := 0, len(listTC)-1; i < j; i, j = i+1, j-1 {
-		listTC[i], listTC[j] = listTC[j], listTC[i]
-	}
-	return listTC
-}
-
-func TestList(t *testing.T) {
-	t.Parallel()
-	s := newApiTest()
-	// put
-	t.Run("put", func(t *testing.T) {
-		for _, tt := range listTestCases {
-			tt := tt
-			t.Run(tt.Name, func(t *testing.T) {
+		t.Run("list", func(t *testing.T) {
+			start := encodeBase64([]byte("\x00"))
+			end := encodeBase64([]byte("\x01"))
+			t.Run("normal", func(t *testing.T) {
 				t.Parallel()
-				key := encodeBase64(tt.Key)
-				t.Logf("Key: %s", key)
-				body, err := json.Marshal(store.Log{New: utils.B2S(tt.Value)})
-				assert.Nil(t, err)
-				result := PerformRequest(s.router, http.MethodPut,
-					path.Join(ApiRoute, "meta", key), nil, bytes.NewReader(body))
+				l := &model.List{
+					Start: start,
+					End:   end,
+					Limit: 10,
+				}
+				h, _ := httpheader.Header(l)
+				result := PerformRequest(s.router, http.MethodGet,
+					path.Join(ApiRoute, "list"), h, nil)
 				res := result.Result()
-				assert.Equal(t, true, res.StatusCode < 300, fmt.Sprintf("Code %d", res.StatusCode))
-				assert.Equal(t, true, res.StatusCode >= 200, fmt.Sprintf("Code %d", res.StatusCode))
-				_, err = ioutil.ReadAll(res.Body)
+				body, err := ioutil.ReadAll(res.Body)
 				assert.Nil(t, err)
-				err = res.Body.Close()
-				assert.Nil(t, err)
-
-				result = PerformRequest(s.router, http.MethodGet,
-					path.Join(ApiRoute, "meta", key), nil, nil)
-				res = result.Result()
-				assert.Equal(t, http.StatusOK, res.StatusCode)
-				body, err = ioutil.ReadAll(res.Body)
-				assert.Nil(t, err)
-				assert.Equal(t, tt.Value, body)
-				err = res.Body.Close()
-				assert.Nil(t, err)
+				assert.Equal(t, http.StatusOK, res.StatusCode, fmt.Sprintf("body: %s", body))
+				items := make([]store.KeyValue, 0)
+				err = json.Unmarshal(body, &items)
+				assert.Nil(t, err, fmt.Sprintf("body: %s", body))
+				for i, item := range items {
+					assert.Equal(t, listTestCases[i].Key, []byte(item.Key))
+					assert.Equal(t, listTestCases[i].Value, []byte(item.Value))
+				}
 			})
-		}
-	})
 
-	t.Run("list", func(t *testing.T) {
-		start := encodeBase64([]byte("\x00"))
-		end := encodeBase64([]byte("\x01"))
-		t.Run("normal", func(t *testing.T) {
-			t.Parallel()
-			l := &model.List{
-				Start: start,
-				End:   end,
-				Limit: 10,
-			}
-			h, _ := httpheader.Header(l)
-			result := PerformRequest(s.router, http.MethodGet,
-				path.Join(ApiRoute, "list"), h, nil)
-			res := result.Result()
-			body, err := ioutil.ReadAll(res.Body)
-			assert.Nil(t, err)
-			assert.Equal(t, http.StatusOK, res.StatusCode, fmt.Sprintf("body: %s", body))
-			items := make([]store.KeyValue, 0)
-			err = json.Unmarshal(body, &items)
-			assert.Nil(t, err, fmt.Sprintf("body: %s", body))
-			for i, item := range items {
-				assert.Equal(t, listTestCases[i].Key, []byte(item.Key))
-				assert.Equal(t, listTestCases[i].Value, []byte(item.Value))
-			}
-		})
-
-		t.Run("limit", func(t *testing.T) {
-			t.Parallel()
-			l := &model.List{
-				Start: start,
-				End:   end,
-				Limit: 1,
-			}
-			h, _ := httpheader.Header(l)
-			result := PerformRequest(s.router, http.MethodGet,
-				path.Join(ApiRoute, "list"), h, nil)
-			res := result.Result()
-			body, err := ioutil.ReadAll(res.Body)
-			assert.Nil(t, err, fmt.Sprintf("body: %s", body))
-			assert.Equal(t, http.StatusOK, res.StatusCode, fmt.Sprintf("body: %s", body))
-			items := make([]store.KeyValue, 0)
-			err = json.Unmarshal(body, &items)
-			assert.Nil(t, err, fmt.Sprintf("body: %s", body))
-			assert.Equal(t, len(items), l.Limit)
-			for i := 0; i < l.Limit; i++ {
-				assert.Equal(t, listTestCases[i].Key, []byte(items[i].Key))
-				assert.Equal(t, listTestCases[i].Value, []byte(items[i].Value))
-			}
-		})
-
-		t.Run("reverse", func(t *testing.T) {
-			t.Parallel()
-			l := &model.List{
-				Start:   start,
-				End:     end,
-				Limit:   10,
-				Reverse: true,
-			}
-			h, _ := httpheader.Header(l)
-			result := PerformRequest(s.router, http.MethodGet,
-				path.Join(ApiRoute, "list"), h, nil)
-			res := result.Result()
-			body, err := ioutil.ReadAll(res.Body)
-			assert.Nil(t, err, fmt.Sprintf("body: %s", body))
-			assert.Equal(t, http.StatusOK, res.StatusCode, fmt.Sprintf("body: %s", body))
-			items := make([]store.KeyValue, 0)
-			err = json.Unmarshal(body, &items)
-			assert.Nil(t, err, fmt.Sprintf("body: %s", body))
-			//reverse
-			reverseList := reverseListTestCases()
-			// check
-			for i, item := range items {
-				assert.Equal(t, reverseList[i].Key, []byte(item.Key))
-				assert.Equal(t, reverseList[i].Value, []byte(item.Value))
-			}
-		})
-
-		t.Run("reverse_limit", func(t *testing.T) {
-			t.Parallel()
-			l := &model.List{
-				Start:   start,
-				End:     end,
-				Limit:   1,
-				Reverse: true,
-			}
-			h, _ := httpheader.Header(l)
-			result := PerformRequest(s.router, http.MethodGet,
-				path.Join(ApiRoute, "list"), h, nil)
-			res := result.Result()
-			body, err := ioutil.ReadAll(res.Body)
-			assert.Nil(t, err, fmt.Sprintf("body: %s", body))
-			assert.Equal(t, http.StatusOK, res.StatusCode, fmt.Sprintf("body: %s", body))
-			items := make([]store.KeyValue, 0)
-			err = json.Unmarshal(body, &items)
-			assert.Nil(t, err, fmt.Sprintf("body: %s", body))
-			assert.Equal(t, len(items), l.Limit, fmt.Sprintf("body: %s", body))
-			//reverse
-			reverseList := reverseListTestCases()
-			// check
-			for i := 0; i < l.Limit; i++ {
-				logrus.Debugf("item: %v", items[i])
-				assert.Equal(t, reverseList[i].Key, []byte(items[i].Key))
-				assert.Equal(t, reverseList[i].Value, []byte(items[i].Value))
-			}
-		})
-	})
-
-	t.Run("delete", func(t *testing.T) {
-		for _, tt := range listTestCases {
-			tt := tt
-			t.Run(tt.Name, func(t *testing.T) {
+			t.Run("limit", func(t *testing.T) {
 				t.Parallel()
-				key := encodeBase64(tt.Key)
-				t.Logf("Key: %s", key)
-				result := PerformRequest(s.router, http.MethodDelete,
-					path.Join(ApiRoute, UnsafeRoute, "meta", key), nil, nil)
+				l := &model.List{
+					Start: start,
+					End:   end,
+					Limit: 1,
+				}
+				h, _ := httpheader.Header(l)
+				result := PerformRequest(s.router, http.MethodGet,
+					path.Join(ApiRoute, "list"), h, nil)
 				res := result.Result()
-				assert.Equal(t, true, res.StatusCode < 300, fmt.Sprintf("Code %d", res.StatusCode))
-				assert.Equal(t, true, res.StatusCode >= 200, fmt.Sprintf("Code %d", res.StatusCode))
-				_, err := ioutil.ReadAll(res.Body)
-				assert.Nil(t, err)
-				err = res.Body.Close()
-				assert.Nil(t, err)
-
-				result = PerformRequest(s.router, http.MethodGet,
-					path.Join(ApiRoute, "meta", key), nil, nil)
-				res = result.Result()
-				assert.Equal(t, http.StatusNotFound, res.StatusCode)
-				err = res.Body.Close()
-				assert.Nil(t, err)
+				body, err := ioutil.ReadAll(res.Body)
+				assert.Nil(t, err, fmt.Sprintf("body: %s", body))
+				assert.Equal(t, http.StatusOK, res.StatusCode, fmt.Sprintf("body: %s", body))
+				items := make([]store.KeyValue, 0)
+				err = json.Unmarshal(body, &items)
+				assert.Nil(t, err, fmt.Sprintf("body: %s", body))
+				assert.Equal(t, len(items), l.Limit)
+				for i := 0; i < l.Limit; i++ {
+					assert.Equal(t, listTestCases[i].Key, []byte(items[i].Key))
+					assert.Equal(t, listTestCases[i].Value, []byte(items[i].Value))
+				}
 			})
-		}
-	})
 
+			t.Run("reverse", func(t *testing.T) {
+				t.Parallel()
+				l := &model.List{
+					Start:   start,
+					End:     end,
+					Limit:   10,
+					Reverse: true,
+				}
+				h, _ := httpheader.Header(l)
+				result := PerformRequest(s.router, http.MethodGet,
+					path.Join(ApiRoute, "list"), h, nil)
+				res := result.Result()
+				body, err := ioutil.ReadAll(res.Body)
+				assert.Nil(t, err, fmt.Sprintf("body: %s", body))
+				assert.Equal(t, http.StatusOK, res.StatusCode, fmt.Sprintf("body: %s", body))
+				items := make([]store.KeyValue, 0)
+				err = json.Unmarshal(body, &items)
+				assert.Nil(t, err, fmt.Sprintf("body: %s", body))
+				//reverse
+				reverseList := reverseListTestCases()
+				// check
+				for i, item := range items {
+					assert.Equal(t, reverseList[i].Key, []byte(item.Key))
+					assert.Equal(t, reverseList[i].Value, []byte(item.Value))
+				}
+			})
+
+			t.Run("reverse_limit", func(t *testing.T) {
+				t.Parallel()
+				l := &model.List{
+					Start:   start,
+					End:     end,
+					Limit:   1,
+					Reverse: true,
+				}
+				h, _ := httpheader.Header(l)
+				result := PerformRequest(s.router, http.MethodGet,
+					path.Join(ApiRoute, "list"), h, nil)
+				res := result.Result()
+				body, err := ioutil.ReadAll(res.Body)
+				assert.Nil(t, err, fmt.Sprintf("body: %s", body))
+				assert.Equal(t, http.StatusOK, res.StatusCode, fmt.Sprintf("body: %s", body))
+				items := make([]store.KeyValue, 0)
+				err = json.Unmarshal(body, &items)
+				assert.Nil(t, err, fmt.Sprintf("body: %s", body))
+				assert.Equal(t, len(items), l.Limit, fmt.Sprintf("body: %s", body))
+				//reverse
+				reverseList := reverseListTestCases()
+				// check
+				for i := 0; i < l.Limit; i++ {
+					logrus.Debugf("item: %v", items[i])
+					assert.Equal(t, reverseList[i].Key, []byte(items[i].Key))
+					assert.Equal(t, reverseList[i].Value, []byte(items[i].Value))
+				}
+			})
+		})
+
+		t.Run("delete", func(t *testing.T) {
+			for _, tt := range listTestCases {
+				tt := tt
+				t.Run(tt.Name, func(t *testing.T) {
+					t.Parallel()
+					key := encodeBase64(tt.Key)
+					t.Logf("Key: %s", key)
+					result := PerformRequest(s.router, http.MethodDelete,
+						path.Join(ApiRoute, UnsafeRoute, "meta", key), nil, nil)
+					res := result.Result()
+					assert.Equal(t, true, res.StatusCode < 300, fmt.Sprintf("Code %d", res.StatusCode))
+					assert.Equal(t, true, res.StatusCode >= 200, fmt.Sprintf("Code %d", res.StatusCode))
+					_, err := ioutil.ReadAll(res.Body)
+					assert.Nil(t, err)
+					err = res.Body.Close()
+					assert.Nil(t, err)
+
+					result = PerformRequest(s.router, http.MethodGet,
+						path.Join(ApiRoute, "meta", key), nil, nil)
+					res = result.Result()
+					assert.Equal(t, http.StatusNotFound, res.StatusCode)
+					err = res.Body.Close()
+					assert.Nil(t, err)
+				})
+			}
+		})
+	})
 	s.Close()
 }

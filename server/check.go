@@ -84,7 +84,9 @@ func TimestampCheck(oldVal, newVal, existVal []byte) ([]byte, error) {
 		}
 	}
 
-	if reflect.DeepEqual(newV, existV) {
+	equal := reflect.DeepEqual(newV, existV)
+	//logrus.Debugf("new %v, exist %v, equal %t", newV, existV, equal)
+	if equal {
 		return nil, xerror.ErrAlreadyExists
 	}
 

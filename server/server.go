@@ -124,6 +124,9 @@ func (s *Server) Start() {
 }
 
 func (s *Server) Close() {
+	if s.closed {
+		return
+	}
 	s.closed = true
 	// waiting health check done
 	time.Sleep(s.conf.Server.SleepBeforeClose.Duration)
