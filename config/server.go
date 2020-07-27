@@ -42,6 +42,7 @@ type Store struct {
 	ReadTimeout        *Duration `toml:"read-timeout"`
 	ListTimeout        *Duration `toml:"list-timeout"`
 	WriteTimeout       *Duration `toml:"write-timeout"`
+	BatchPutTimeout    *Duration `toml:"batch-put-timeout"`
 	BatchDeleteTimeout *Duration `toml:"batch-delete-timeout"`
 }
 
@@ -94,6 +95,7 @@ func DefaultConfig() *Config {
 			ReadTimeout:        &Duration{10 * time.Second},
 			WriteTimeout:       &Duration{10 * time.Second},
 			ListTimeout:        &Duration{60 * time.Second},
+			BatchPutTimeout:    &Duration{60 * time.Second},
 			BatchDeleteTimeout: &Duration{10 * time.Minute},
 		},
 		Server: Server{

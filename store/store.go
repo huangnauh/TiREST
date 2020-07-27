@@ -12,11 +12,12 @@ import (
 type DB interface {
 	Close() error
 	Put(key, val []byte) error
-	UnsafeDelete(start, end []byte) error
-	CheckAndPut(key, oldVal, newVal []byte, option CheckOption) error
+	BatchPut(items []KeyEntry) error                                  //TODO: ErrEntryTooLarge
+	CheckAndPut(key, oldVal, newVal []byte, option CheckOption) error // to kafka
 	Get(key []byte, option GetOption) (Value, error)
-	BatchDelete(start, end []byte, limit int) ([]byte, int, error)
 	List(start, end []byte, limit int, option ListOption) ([]KeyValue, error)
+	BatchDelete(start, end []byte, limit int) ([]byte, int, error)
+	UnsafeDelete(start, end []byte) error
 }
 
 type CheckFunc func(oldVal, newVal, existVal []byte) ([]byte, error)
@@ -116,6 +117,25 @@ func NewStore(conf *config.Config) (*Store, error) {
 		conf: conf,
 		log:  logrus.WithFields(logrus.Fields{"worker": "store"}),
 	}, nil
+}
+
+func OnlyOpenDatabase(conf *config.Config) (*Store, error) {
+	conf.Store.GCEnable = false
+
+	_, ok := dDrivers[conf.Store.Name]
+	if !ok {
+		return nil, xerror.ErrDatabaseNotRegister
+	}
+	s := &Store{
+		conf: conf,
+		log:  logrus.WithFields(logrus.Fields{"worker": "database"}),
+	}
+
+	err := s.OpenDatabase()
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
 }
 
 func (s *Store) OpenConnector() error {
@@ -224,6 +244,19 @@ func (s *Store) List(start, end []byte, limit int, option ListOption) ([]KeyValu
 	}
 	s.log.Debugf("list %d items (%v-%v)", len(res), start, end)
 	return res, nil
+}
+
+func (s *Store) BatchPut(items []KeyEntry) error {
+	if s.db == nil {
+		return xerror.ErrNotExists
+	}
+
+	err := s.db.BatchPut(items)
+	if err != nil {
+		s.log.Errorf("batch delete err %s", err)
+		return err
+	}
+	return nil
 }
 
 func (s *Store) BatchDelete(start, end []byte, limit int) ([]byte, int, error) {

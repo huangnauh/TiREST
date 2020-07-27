@@ -204,6 +204,7 @@ func TestServer(t *testing.T) {
 			})
 		}
 
+		// put list test cases
 		t.Run("put", func(t *testing.T) {
 			for _, tt := range listTestCases {
 				tt := tt
@@ -236,6 +237,7 @@ func TestServer(t *testing.T) {
 			}
 		})
 
+		// check list test cases
 		t.Run("list", func(t *testing.T) {
 			start := encodeBase64([]byte("\x00"))
 			end := encodeBase64([]byte("\x01"))
@@ -343,6 +345,7 @@ func TestServer(t *testing.T) {
 			})
 		})
 
+		// delete list test cases
 		t.Run("delete", func(t *testing.T) {
 			for _, tt := range listTestCases {
 				tt := tt

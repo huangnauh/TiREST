@@ -254,6 +254,33 @@ func (t *TiKV) Put(key, val []byte) error {
 	return nil
 }
 
+func (t *TiKV) BatchPut(items []store.KeyEntry) error {
+	tx, err := t.client.Begin()
+	if err != nil {
+		return xerror.ErrGetTimestampFailed
+	}
+
+	for _, item := range items {
+		if len(item.Entry) == 0 {
+			err = tx.Delete(item.Key)
+		} else {
+			err = tx.Set(item.Key, item.Entry)
+		}
+	}
+
+	if err != nil {
+		return xerror.ErrSetKVFailed
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.BatchPutTimeout.Duration)
+	defer cancel()
+	err = tx.Commit(ctx)
+	if err != nil {
+		return xerror.ErrCommitKVFailed
+	}
+	return nil
+}
+
 func (t *TiKV) BatchDelete(start, end []byte, limit int) ([]byte, int, error) {
 	tx, err := t.client.Begin()
 	if err != nil {

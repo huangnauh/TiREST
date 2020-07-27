@@ -130,16 +130,7 @@ func getStore(c *cli.Context) (*store.Store, error) {
 		return nil, err
 	}
 	conf.Log.Level = level.String()
-	conf.Store.GCEnable = false
-	s, err := store.NewStore(conf)
-	if err != nil {
-		return nil, err
-	}
-	err = s.OpenDatabase()
-	if err != nil {
-		return nil, err
-	}
-	return s, nil
+	return store.OnlyOpenDatabase(conf)
 }
 
 func unquote(s string) (string, error) {
