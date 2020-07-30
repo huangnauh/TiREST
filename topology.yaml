@@ -1,0 +1,364 @@
+global:
+  user: "tikv"
+  ssh_port: 65422
+  deploy_dir: "/disk/ssd1/tikv/deploy"
+  data_dir: "/disk/ssd1/tikv/data/"
+  log_dir: "/disk/ssd1/tikv/log/"
+
+
+monitored:
+  node_exporter_port: 9100
+  blackbox_exporter_port: 9115
+  deploy_dir: "/disk/ssd1/tikv/deploy/monitored-9100"
+  data_dir: "/disk/ssd1/tikv/data/monitored-9100"
+  log_dir: "/disk/ssd1/tikv/log/monitored-9100/"  
+
+
+server_configs:
+  tikv:
+    log-level: "info"
+    min-thread-count: 1
+    max-thread-count: 4
+    readpool.unified.max-thread-count: 4
+    readpool.unified.min-thread-count: 1
+    readpool.storage.use-unified-pool: false
+    readpool.storage.high-concurrency: 2
+    readpool.storage.normal-concurrency: 2
+    readpool.storage.low-concurrency: 2
+    readpool.coprocessor.use-unified-pool: true
+    readpool.coprocessor.high-concurrency: 2
+    readpool.coprocessor.normal-concurrency: 2
+    readpool.coprocessor.low-concurrency: 2
+    server.grpc-concurrency: 1
+    server.grpc-memory-pool-quota: "10G"
+    server.grpc-raft-conn-num: 1
+    server.grpc-keepalive-time: "10s"
+    server.grpc-keepalive-timeout: "5s"
+    storage.scheduler-worker-pool-size: 2
+    storage.block-cache.capacity: "1G"
+    raftstore.raft-base-tick-interval: "2s"
+    rocksdb.max-background-jobs: 4
+    rocksdb.max-sub-compactions: 2
+    rocksdb.max-open-files: 4096
+    rocksdb.rate-bytes-per-sec: "100MB"
+    rocksdb.defaultcf.target-file-size-base: "32M"
+    rocksdb.writecf.target-file-size-base: "32M"
+    gc.max-write-bytes-per-sec: "10M"
+  pd:
+    schedule.max-merge-region-size: 20
+    schedule.max-merge-region-keys: 200000
+    schedule.max-store-down-time: "24h"
+    schedule.leader-schedule-limit: 2
+    schedule.region-schedule-limit: 256
+    schedule.replica-schedule-limit: 16
+    schedule.merge-schedule-limit: 4
+    schedule.hot-region-schedule-limit: 4
+    replication.max-replicas: 3
+    replication.location-labels: ["host"]
+
+pd_servers:
+  - host: 192.168.30.20
+    data_dir: "/disk/ssd1/tikv/data/pd-2379"
+    log_dir: "/disk/ssd1/tikv/log/pd-2379"
+  - host: 192.168.30.21
+  - host: 192.168.30.22
+
+tikv_servers:
+  - host: 192.168.30.20
+    port: 20160
+    status_port: 20180
+    deploy_dir: "/disk/ssd2/tikv/deploy/tikv-20160"
+    data_dir: "/disk/ssd2/tikv/data/tikv-20160"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20160"
+    config:
+      server.labels: { host: "STO-PGSQL-00" }
+  - host: 192.168.30.20
+    port: 20161
+    status_port: 20181
+    deploy_dir: "/disk/ssd3/tikv/deploy/tikv-20161"
+    data_dir: "/disk/ssd3/tikv/data/tikv-20161"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20161"
+    config:
+      server.labels: { host: "STO-PGSQL-00" }
+  - host: 192.168.30.20
+    port: 20162
+    status_port: 20182
+    deploy_dir: "/disk/ssd4/tikv/deploy/tikv-20162"
+    data_dir: "/disk/ssd4/tikv/data/tikv-20162"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20162"
+    config:
+      server.labels: { host: "STO-PGSQL-00" }
+  - host: 192.168.30.20
+    port: 20163
+    status_port: 20183
+    deploy_dir: "/disk/ssd5/tikv/deploy/tikv-20163"
+    data_dir: "/disk/ssd5/tikv/data/tikv-20163"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20163"
+    config:
+      server.labels: { host: "STO-PGSQL-00" }
+  - host: 192.168.30.20
+    port: 20164
+    status_port: 20184
+    deploy_dir: "/disk/ssd6/tikv/deploy/tikv-20164"
+    data_dir: "/disk/ssd6/tikv/data/tikv-20164"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20164"
+    config:
+      server.labels: { host: "STO-PGSQL-00" }
+  - host: 192.168.30.20
+    port: 20165
+    status_port: 20185
+    deploy_dir: "/disk/ssd7/tikv/deploy/tikv-20165"
+    data_dir: "/disk/ssd7/tikv/data/tikv-20165"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20165"
+    config:
+      server.labels: { host: "STO-PGSQL-00" }
+  - host: 192.168.30.20
+    port: 20166
+    status_port: 20186
+    deploy_dir: "/disk/ssd8/tikv/deploy/tikv-20166"
+    data_dir: "/disk/ssd8/tikv/data/tikv-20166"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20166"
+    config:
+      server.labels: { host: "STO-PGSQL-00" }
+  - host: 192.168.30.21
+    port: 20160
+    status_port: 20180
+    deploy_dir: "/disk/ssd2/tikv/deploy/tikv-20160"
+    data_dir: "/disk/ssd2/tikv/data/tikv-20160"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20160"
+    config:
+      server.labels: { host: "STO-PGSQL-01" }
+  - host: 192.168.30.21
+    port: 20161
+    status_port: 20181
+    deploy_dir: "/disk/ssd3/tikv/deploy/tikv-20161"
+    data_dir: "/disk/ssd3/tikv/data/tikv-20161"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20161"
+    config:
+      server.labels: { host: "STO-PGSQL-01" }
+  - host: 192.168.30.21
+    port: 20162
+    status_port: 20182
+    deploy_dir: "/disk/ssd4/tikv/deploy/tikv-20162"
+    data_dir: "/disk/ssd4/tikv/data/tikv-20162"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20162"
+    config:
+      server.labels: { host: "STO-PGSQL-01" }
+  - host: 192.168.30.21
+    port: 20163
+    status_port: 20183
+    deploy_dir: "/disk/ssd5/tikv/deploy/tikv-20163"
+    data_dir: "/disk/ssd5/tikv/data/tikv-20163"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20163"
+    config:
+      server.labels: { host: "STO-PGSQL-01" }
+  - host: 192.168.30.21
+    port: 20164
+    status_port: 20184
+    deploy_dir: "/disk/ssd6/tikv/deploy/tikv-20164"
+    data_dir: "/disk/ssd6/tikv/data/tikv-20164"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20164"
+    config:
+      server.labels: { host: "STO-PGSQL-01" }
+  - host: 192.168.30.21
+    port: 20165
+    status_port: 20185
+    deploy_dir: "/disk/ssd7/tikv/deploy/tikv-20165"
+    data_dir: "/disk/ssd7/tikv/data/tikv-20165"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20165"
+    config:
+      server.labels: { host: "STO-PGSQL-01" }
+  - host: 192.168.30.21
+    port: 20166
+    status_port: 20186
+    deploy_dir: "/disk/ssd8/tikv/deploy/tikv-20166"
+    data_dir: "/disk/ssd8/tikv/data/tikv-20166"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20166"
+    config:
+      server.labels: { host: "STO-PGSQL-01" }
+  - host: 192.168.30.22
+    port: 20160
+    status_port: 20180
+    deploy_dir: "/disk/ssd2/tikv/deploy/tikv-20160"
+    data_dir: "/disk/ssd2/tikv/data/tikv-20160"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20160"
+    config:
+      server.labels: { host: "STO-PGSQL-02" }
+  - host: 192.168.30.22
+    port: 20161
+    status_port: 20181
+    deploy_dir: "/disk/ssd3/tikv/deploy/tikv-20161"
+    data_dir: "/disk/ssd3/tikv/data/tikv-20161"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20161"
+    config:
+      server.labels: { host: "STO-PGSQL-02" }
+  - host: 192.168.30.22
+    port: 20162
+    status_port: 20182
+    deploy_dir: "/disk/ssd4/tikv/deploy/tikv-20162"
+    data_dir: "/disk/ssd4/tikv/data/tikv-20162"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20162"
+    config:
+      server.labels: { host: "STO-PGSQL-02" }
+  - host: 192.168.30.22
+    port: 20163
+    status_port: 20183
+    deploy_dir: "/disk/ssd5/tikv/deploy/tikv-20163"
+    data_dir: "/disk/ssd5/tikv/data/tikv-20163"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20163"
+    config:
+      server.labels: { host: "STO-PGSQL-02" }
+  - host: 192.168.30.22
+    port: 20164
+    status_port: 20184
+    deploy_dir: "/disk/ssd6/tikv/deploy/tikv-20164"
+    data_dir: "/disk/ssd6/tikv/data/tikv-20164"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20164"
+    config:
+      server.labels: { host: "STO-PGSQL-02" }
+  - host: 192.168.30.22
+    port: 20165
+    status_port: 20185
+    deploy_dir: "/disk/ssd7/tikv/deploy/tikv-20165"
+    data_dir: "/disk/ssd7/tikv/data/tikv-20165"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20165"
+    config:
+      server.labels: { host: "STO-PGSQL-02" }
+  - host: 192.168.30.22
+    port: 20166
+    status_port: 20186
+    deploy_dir: "/disk/ssd8/tikv/deploy/tikv-20166"
+    data_dir: "/disk/ssd8/tikv/data/tikv-20166"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20166"
+    config:
+      server.labels: { host: "STO-PGSQL-02" }
+  - host: 192.168.30.23
+    port: 20160
+    status_port: 20180
+    deploy_dir: "/disk/ssd2/tikv/deploy/tikv-20160"
+    data_dir: "/disk/ssd2/tikv/data/tikv-20160"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20160"
+    config:
+      server.labels: { host: "STO-PGSQL-03" }
+  - host: 192.168.30.23
+    port: 20161
+    status_port: 20181
+    deploy_dir: "/disk/ssd3/tikv/deploy/tikv-20161"
+    data_dir: "/disk/ssd3/tikv/data/tikv-20161"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20161"
+    config:
+      server.labels: { host: "STO-PGSQL-03" }
+  - host: 192.168.30.23
+    port: 20162
+    status_port: 20182
+    deploy_dir: "/disk/ssd4/tikv/deploy/tikv-20162"
+    data_dir: "/disk/ssd4/tikv/data/tikv-20162"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20162"
+    config:
+      server.labels: { host: "STO-PGSQL-03" }
+  - host: 192.168.30.23
+    port: 20163
+    status_port: 20183
+    deploy_dir: "/disk/ssd5/tikv/deploy/tikv-20163"
+    data_dir: "/disk/ssd5/tikv/data/tikv-20163"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20163"
+    config:
+      server.labels: { host: "STO-PGSQL-03" }
+  - host: 192.168.30.23
+    port: 20164
+    status_port: 20184
+    deploy_dir: "/disk/ssd6/tikv/deploy/tikv-20164"
+    data_dir: "/disk/ssd6/tikv/data/tikv-20164"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20164"
+    config:
+      server.labels: { host: "STO-PGSQL-03" }
+  - host: 192.168.30.23
+    port: 20165
+    status_port: 20185
+    deploy_dir: "/disk/ssd7/tikv/deploy/tikv-20165"
+    data_dir: "/disk/ssd7/tikv/data/tikv-20165"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20165"
+    config:
+      server.labels: { host: "STO-PGSQL-03" }
+  - host: 192.168.30.23
+    port: 20166
+    status_port: 20186
+    deploy_dir: "/disk/ssd8/tikv/deploy/tikv-20166"
+    data_dir: "/disk/ssd8/tikv/data/tikv-20166"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20166"
+    config:
+      server.labels: { host: "STO-PGSQL-03" }
+  - host: 192.168.30.24
+    port: 20160
+    status_port: 20180
+    deploy_dir: "/disk/ssd2/tikv/deploy/tikv-20160"
+    data_dir: "/disk/ssd2/tikv/data/tikv-20160"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20160"
+    config:
+      server.labels: { host: "STO-PGSQL-04" }
+  - host: 192.168.30.24
+    port: 20161
+    status_port: 20181
+    deploy_dir: "/disk/ssd3/tikv/deploy/tikv-20161"
+    data_dir: "/disk/ssd3/tikv/data/tikv-20161"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20161"
+    config:
+      server.labels: { host: "STO-PGSQL-04" }
+  - host: 192.168.30.24
+    port: 20162
+    status_port: 20182
+    deploy_dir: "/disk/ssd4/tikv/deploy/tikv-20162"
+    data_dir: "/disk/ssd4/tikv/data/tikv-20162"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20162"
+    config:
+      server.labels: { host: "STO-PGSQL-04" }
+  - host: 192.168.30.24
+    port: 20163
+    status_port: 20183
+    deploy_dir: "/disk/ssd5/tikv/deploy/tikv-20163"
+    data_dir: "/disk/ssd5/tikv/data/tikv-20163"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20163"
+    config:
+      server.labels: { host: "STO-PGSQL-04" }
+  - host: 192.168.30.24
+    port: 20164
+    status_port: 20184
+    deploy_dir: "/disk/ssd6/tikv/deploy/tikv-20164"
+    data_dir: "/disk/ssd6/tikv/data/tikv-20164"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20164"
+    config:
+      server.labels: { host: "STO-PGSQL-04" }
+  - host: 192.168.30.24
+    port: 20165
+    status_port: 20185
+    deploy_dir: "/disk/ssd7/tikv/deploy/tikv-20165"
+    data_dir: "/disk/ssd7/tikv/data/tikv-20165"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20165"
+    config:
+      server.labels: { host: "STO-PGSQL-04" }
+  - host: 192.168.30.24
+    port: 20166
+    status_port: 20186
+    deploy_dir: "/disk/ssd8/tikv/deploy/tikv-20166"
+    data_dir: "/disk/ssd8/tikv/data/tikv-20166"
+    log_dir: "/disk/ssd1/tikv/log/tikv-20166"
+    config:
+      server.labels: { host: "STO-PGSQL-04" }
+
+monitoring_servers:
+  - host: 192.168.30.61
+    deploy_dir: "/disk/ssd1/tikv/deploy/prometheus-8249"
+    data_dir: "/disk/ssd1/tikv/data/prometheus-8249"
+    log_dir: "/disk/ssd1/tikv/log/prometheus-8249"
+
+grafana_servers:
+  - host: 192.168.30.61
+    deploy_dir: "/disk/ssd1/tikv/deploy/grafana-3000"
+  
+alertmanager_servers:
+  - host: 192.168.30.61
+    deploy_dir: "/disk/ssd1/tikv/deploy/alertmanager-9093"
+    data_dir: "/disk/ssd1/tikv/data/alertmanager-9093"
+    log_dir: "/disk/ssd1/tikv/log/alertmanager-9093"   
+
+    

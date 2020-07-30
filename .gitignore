@@ -4,3 +4,5 @@
 !.gitattributes
 main
 tikv-proxy
+tikv-assembly
+bin/
