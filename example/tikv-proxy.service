@@ -1,0 +1,15 @@
+[Unit]
+Description=tikv-proxy.service
+After=network.target
+ConditionPathExists=/disk/ssd6/
+
+[Service]
+ExecStart=/disk/ssd6/tikv-proxy/tikv-proxy server --conf=/disk/ssd6/tikv-proxy/service.toml
+WorkingDirectory=/disk/ssd6/tikv-proxy/
+Restart=always
+LimitCORE=infinity
+LimitNOFILE=100000
+LimitNPROC=infinity
+
+[Install]
+WantedBy=multi-user.target

@@ -30,17 +30,17 @@ type UpdatedAtValue struct {
 }
 
 type MetaValue struct {
-	Key           string            `json:"key"`
-	BlockSize     int               `json:"block_size"`
-	BlockUUID     string            `json:"block_uuid"`
-	ClusterID     string            `json:"cluster_id"`
-	ContentLength int64             `json:"content_length"`
-	ContentMd5    string            `json:"content_md5"`
-	ContentType   string            `json:"content_type"`
-	CreatedAt     int64             `json:"create_at"`
-	UpdatedAt     int64             `json:"updated_at"`
-	Deleted       bool              `json:"deleted"`
-	Metadata      map[string]string `json:"metadata"`
+	Key           string                 `json:"key"`
+	BlockSize     int                    `json:"block_size"`
+	BlockUUID     string                 `json:"block_uuid"`
+	ClusterID     string                 `json:"cluster_id"`
+	ContentLength int64                  `json:"content_length"`
+	ContentMd5    string                 `json:"content_md5"`
+	ContentType   string                 `json:"content_type"`
+	CreatedAt     int64                  `json:"create_at"`
+	UpdatedAt     int64                  `json:"updated_at"`
+	Deleted       bool                   `json:"deleted"`
+	Metadata      map[string]interface{} `json:"metadata"`
 }
 
 func TimestampCheck(oldVal, newVal, existVal []byte) ([]byte, error) {

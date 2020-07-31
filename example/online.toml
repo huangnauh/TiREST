@@ -2,16 +2,17 @@ enable-tracing = true
 
 [store]
   name = "newtikv"
-  path = "tikv://10.0.5.89:2379"
+  path = "tikv://192.168.30.22:2379,192.168.30.23:2379,192.168.30.24:2379"
   gc-enable = true
-  pd-address = ["10.0.5.89:2379"]
+  pd-address = []
   read-timeout = "10s"
   list-timeout = "1m0s"
   write-timeout = "10s"
+  batch-put-timeout = "1m0s"
   batch-delete-timeout = "10m0s"
 
 [server]
-  http-host = "127.0.0.1"
+  http-host = "192.168.14.101"
   http-port = 6100
   replica-read = false
   read-timeout = "10s"
@@ -19,19 +20,19 @@ enable-tracing = true
   read-header-timeout = "5s"
   write-timeout = "10s"
   idle-timeout = "2m0s"
-  sleep-before-close = "1ms"
+  sleep-before-close = "5s"
 
 [connector]
   name = "kafka"
-  version = "0.9.0.1"
+  version = "2.5.0"
   enable-producer = true
-  debug-producer = true
-  broker-list = ["10.0.5.89:2379"]
+  debug-producer = false
+  broker-list = ["192.168.30.100:9092", "192.168.30.101:9092", "192.168.30.102:9092","192.168.30.103:9092","192.168.30.104:9092"]
   fetch-metadata = true
   entry = 10000
   topic = "tikvmeta"
   partition-num = 512
-  queue-data-path = "./queue/"
+  queue-data-path = "/disk/ssd6/tikv-proxy/queue/"
   mem-queue-size = 10000
   max-bytes-per-file = 104857600
   sync-every = 1000
@@ -42,9 +43,9 @@ enable-tracing = true
   write-timeout = "50ms"
 
 [log]
-  level = "debug"
-  error-log-dir = ""
-  access-log-dir = "std"
+  level = "info"
+  error-log-dir = "/disk/ssd6/tikv-proxy/logs/error.log"
+  access-log-dir = "/disk/ssd6/tikv-proxy/logs/access.log"
   buffer-size = 102400
   max-bytes = 536870912
   backup_count = 10
