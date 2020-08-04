@@ -26,7 +26,6 @@ func init() {
 			&cli.BoolFlag{
 				Name:  "raw",
 				Usage: "raw key",
-				Value: true,
 			},
 			&cli.UintFlag{
 				Name:    "verbose",
@@ -50,7 +49,7 @@ func init() {
 			{
 				Name:      "get",
 				Usage:     "get the value for the key in the tikv store",
-				ArgsUsage: "KEY VALUE",
+				ArgsUsage: "KEY",
 				Action: func(c *cli.Context) error {
 					if c.NArg() != 1 {
 						return errors.New("invalid KEY VALUE")
@@ -138,6 +137,7 @@ func runKVPut(c *cli.Context) error {
 		return err
 	}
 	fmt.Printf("encode key, %v\n", meta)
+	fmt.Printf("encode key, %s\n", meta)
 	s, err := getStore(c)
 	if err != nil {
 		return err
@@ -164,6 +164,7 @@ func runKVDelete(c *cli.Context) error {
 		return err
 	}
 	fmt.Printf("encode key, %v\n", meta)
+	fmt.Printf("encode key, %s\n", meta)
 	s, err := getStore(c)
 	if err != nil {
 		return err
@@ -190,6 +191,7 @@ func runKVGet(c *cli.Context) error {
 		return err
 	}
 	fmt.Printf("encode key, %v\n", meta)
+	fmt.Printf("encode key, %s\n", meta)
 	s, err := getStore(c)
 	if err != nil {
 		return err

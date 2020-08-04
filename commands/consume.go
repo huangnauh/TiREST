@@ -135,8 +135,8 @@ func (consumer *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, clai
 			break
 		}
 		consumer.consume++
-		logrus.Infof("Message claimed: value = %s, partition = %v, offset = %v, topic = %s, timestamp %s",
-			string(message.Value), message.Partition, message.Offset, message.Topic, message.Timestamp)
+		logrus.Infof("Message claimed: key %s, partition = %d, offset = %d, value = %s",
+			message.Key, message.Partition, message.Offset, message.Value)
 		session.MarkMessage(message, "")
 	}
 
