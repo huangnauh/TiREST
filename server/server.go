@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/DeanThompson/ginpprof"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	"gitlab.s.upyun.com/platform/tikv-proxy/config"
 	"gitlab.s.upyun.com/platform/tikv-proxy/middleware"
@@ -74,6 +76,12 @@ var (
 	UnsafeRoute = "unsafe"
 )
 
+func prometheusHandler() http.Handler {
+	return promhttp.HandlerFor(
+		prometheus.DefaultGatherer,
+		promhttp.HandlerOpts{ErrorLog: logrus.StandardLogger()})
+}
+
 func (s *Server) registerRoutes() error {
 	//if gin.IsDebugging() {
 	//	url := ginSwagger.URL("/swagger/doc.json")
@@ -91,6 +99,7 @@ func (s *Server) registerRoutes() error {
 		ginpprof.Wrap(s.router)
 		s.router.Use(middleware.SetTrace())
 	}
+	s.router.GET("/metrics", gin.WrapH(prometheusHandler()))
 
 	s.router.NoRoute(HandleNoRoute)
 	api := s.router.Group(ApiRoute)

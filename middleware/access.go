@@ -73,9 +73,7 @@ func (m *Metric) handlerFunc() gin.HandlerFunc {
 		start := time.Now()
 		requestSize := c.Request.ContentLength
 		m.inFlightGauge.Inc()
-		defer func() {
-			m.inFlightGauge.Dec()
-		}()
+		defer m.inFlightGauge.Dec()
 		c.Next()
 
 		status := strconv.Itoa(c.Writer.Status())
