@@ -25,6 +25,7 @@ type Connector struct {
 	queue     diskqueue.Interface
 	writeBuf  bytes.Buffer
 	writeChan chan store.KeyEntry
+	closed    chan struct{}
 	conf      *config.Config
 	cfg       *sarama.Config
 	//TODO: metrics
@@ -60,9 +61,11 @@ func (d Driver) Open(conf *config.Config) (store.Connector, error) {
 		log:       l,
 		writeChan: make(chan store.KeyEntry, MaxMessage),
 		conf:      conf,
+		closed:    make(chan struct{}),
 	}
 
 	go conn.runQueue()
+	go conn.runMetrics()
 
 	if conf.Connector.EnableProducer {
 		var err error
@@ -215,6 +218,7 @@ func (c *Connector) runQueue() {
 }
 
 func (c *Connector) runProducer() {
+	c.log.Info("running producer")
 	for {
 		select {
 		case success, ok := <-c.producer.Successes():
@@ -248,6 +252,10 @@ func (c *Connector) Send(msg store.KeyEntry) error {
 }
 
 func (c *Connector) Close() {
+	if c.closed == nil {
+		return
+	}
+	close(c.closed)
 	close(c.writeChan)
 	err := c.queue.Close()
 	if err != nil {
@@ -259,5 +267,21 @@ func (c *Connector) Close() {
 	err = c.producer.Close()
 	if err != nil {
 		c.log.Errorf("producer close failed, %s", err)
+	}
+}
+
+func (c *Connector) runMetrics() {
+	c.log.Info("collect metrics")
+	ticker := time.NewTicker(time.Minute)
+	metric.Chan.Set(float64(len(c.writeChan)))
+	metric.Queue.Set(float64(c.queue.Depth()))
+	for {
+		select {
+		case <-c.closed:
+			return
+		case <-ticker.C:
+			metric.Chan.Set(float64(len(c.writeChan)))
+			metric.Queue.Set(float64(c.queue.Depth()))
+		}
 	}
 }
