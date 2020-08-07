@@ -262,14 +262,14 @@ func (s *Server) GetConfig(c *gin.Context) {
 
 func (s *Server) Health(c *gin.Context) {
 	if s.closed {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "is closed"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "is closed"})
 		return
 	}
 
 	err := s.store.Health()
 	if err != nil {
 		s.log.Errorf("not health, %s", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	c.Status(http.StatusNoContent)
