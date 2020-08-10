@@ -5,17 +5,17 @@ import (
 	"sync"
 )
 
-var bufPool sync.Pool
-
-func GetBuf() *bytes.Buffer {
-	buf := bufPool.Get()
-	if buf == nil {
-		return &bytes.Buffer{}
-	}
-	return buf.(*bytes.Buffer)
+var bufPool = sync.Pool{
+	New: func() interface{} {
+		return new(bytes.Buffer)
+	},
 }
 
-func GiveBuf(buf *bytes.Buffer) {
+func GetBuf() *bytes.Buffer {
+	return bufPool.Get().(*bytes.Buffer)
+}
+
+func PutBuf(buf *bytes.Buffer) {
 	buf.Reset()
 	bufPool.Put(buf)
 }

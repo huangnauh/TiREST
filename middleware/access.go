@@ -5,6 +5,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"gitlab.s.upyun.com/platform/tikv-proxy/log"
+	"io/ioutil"
 	"strconv"
 	"time"
 )
@@ -110,13 +111,16 @@ func InitLog(fileName string, bufferSize int, maxBytes int, backupCount int) err
 	logger = logrus.New()
 
 	var err error
-	logWriter, err = log.NewRotatingOuter(fileName, bufferSize, maxBytes, backupCount)
+	logWriter, err = log.NewRotatingOuter(fileName, bufferSize, maxBytes,
+		backupCount, &log.Formatter{})
 	if err != nil {
 		return err
 	}
 
-	logger.Formatter = &log.Formatter{}
-	logger.Out = logWriter
+	logger.SetEntryBufferDisable(true)
+	logger.Formatter = log.NullFormatter{}
+	logger.SetOutput(ioutil.Discard)
+	logger.AddHook(logWriter)
 	return nil
 }
 

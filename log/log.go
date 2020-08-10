@@ -1,15 +1,32 @@
 package log
 
 import (
+	"bytes"
 	"github.com/nsqio/go-diskqueue"
 	"github.com/sirupsen/logrus"
+	"gitlab.s.upyun.com/platform/tikv-proxy/utils"
 )
 
 type Formatter struct {
 }
 
 func (f *Formatter) Format(entry *logrus.Entry) ([]byte, error) {
-	return []byte(entry.Message), nil
+	//Notice: PutBuf in logrus hook
+	var b *bytes.Buffer
+	if entry.Buffer != nil {
+		b = entry.Buffer
+	} else {
+		b = utils.GetBuf()
+	}
+	b.WriteString(entry.Message)
+	return b.Bytes(), nil
+}
+
+type NullFormatter struct {
+}
+
+func (NullFormatter) Format(_ *logrus.Entry) ([]byte, error) {
+	return []byte{}, nil
 }
 
 func NewLogFunc(log *logrus.Entry) diskqueue.AppLogFunc {

@@ -141,13 +141,13 @@ func (s *Server) Close() {
 	time.Sleep(s.conf.Server.SleepBeforeClose.Duration)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	logrus.Infof("shutdown server")
+	s.log.Infof("shutdown server")
 	err := s.server.Shutdown(ctx)
 	if err != nil {
 		logrus.Errorf("shutdown failed %s", err)
 	}
 	middleware.CloseAccessLog()
-	logrus.Infof("shutdown store")
+	s.log.Infof("shutdown store")
 	err = s.store.Close()
 	if err != nil {
 		logrus.Errorf("store close failed %s", err)
