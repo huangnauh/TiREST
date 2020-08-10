@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"github.com/gin-gonic/gin"
+	"gitlab.s.upyun.com/platform/tikv-proxy/middleware"
 	"gitlab.s.upyun.com/platform/tikv-proxy/model"
 	"gitlab.s.upyun.com/platform/tikv-proxy/utils"
 	"gitlab.s.upyun.com/platform/tikv-proxy/utils/json"
@@ -15,6 +16,8 @@ import (
 func (s *Server) Get(c *gin.Context) {
 	l := &model.Meta{}
 	if err := c.ShouldBindHeader(&l); err != nil {
+		s.log.Errorf("bind header, err %s", err)
+		c.Set(middleware.HttpMessage, err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -22,6 +25,8 @@ func (s *Server) Get(c *gin.Context) {
 	keyStr := c.Param("key")
 	key, err := EncodeMetaKey(keyStr, l.Raw)
 	if err != nil {
+		s.log.Errorf("check key %s, err %s", keyStr, err)
+		c.Set(middleware.HttpMessage, err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid key"})
 		return
 	}
@@ -33,6 +38,8 @@ func (s *Server) Get(c *gin.Context) {
 	if l.Secondary != "" {
 		secondary, err := EncodeMetaKey(l.Secondary, l.Raw)
 		if err != nil {
+			s.log.Errorf("check secondary key %s, err %s", l.Secondary, err)
+			c.Set(middleware.HttpMessage, err.Error())
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid secondary"})
 			return
 		}
@@ -43,6 +50,7 @@ func (s *Server) Get(c *gin.Context) {
 	if err == xerror.ErrNotExists {
 		c.Status(http.StatusNotFound)
 	} else if err != nil {
+		c.Set(middleware.HttpMessage, err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	} else {
 		if v.Secondary {
@@ -56,6 +64,8 @@ func (s *Server) Get(c *gin.Context) {
 func (s *Server) UnsafeDelete(c *gin.Context) {
 	l := &model.Meta{}
 	if err := c.ShouldBindHeader(&l); err != nil {
+		s.log.Errorf("bind header, err %s", err)
+		c.Set(middleware.HttpMessage, err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -63,12 +73,15 @@ func (s *Server) UnsafeDelete(c *gin.Context) {
 	keyStr := c.Param("key")
 	key, err := EncodeMetaKey(keyStr, l.Raw)
 	if err != nil {
+		s.log.Errorf("check key %s, err %s", keyStr, err)
+		c.Set(middleware.HttpMessage, err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid key"})
 		return
 	}
 
 	err = s.store.UnsafePut(key, nil)
 	if err != nil {
+		c.Set(middleware.HttpMessage, err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	} else {
 		c.Status(http.StatusNoContent)
@@ -78,6 +91,8 @@ func (s *Server) UnsafeDelete(c *gin.Context) {
 func (s *Server) UnsafePut(c *gin.Context) {
 	l := &model.Meta{}
 	if err := c.ShouldBindHeader(&l); err != nil {
+		s.log.Errorf("bind header, err %s", err)
+		c.Set(middleware.HttpMessage, err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -85,6 +100,8 @@ func (s *Server) UnsafePut(c *gin.Context) {
 	keyStr := c.Param("key")
 	key, err := EncodeMetaKey(keyStr, l.Raw)
 	if err != nil {
+		s.log.Errorf("check key %s, err %s", keyStr, err)
+		c.Set(middleware.HttpMessage, err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid key"})
 		return
 	}
@@ -92,12 +109,14 @@ func (s *Server) UnsafePut(c *gin.Context) {
 	val, err := ioutil.ReadAll(c.Request.Body)
 	if err != nil {
 		s.log.Errorf("read body failed: %s", err)
+		c.Set(middleware.HttpMessage, err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	err = s.store.UnsafePut(key, val)
 	if err != nil {
+		c.Set(middleware.HttpMessage, err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	} else {
 		c.Status(http.StatusNoContent)
@@ -107,6 +126,8 @@ func (s *Server) UnsafePut(c *gin.Context) {
 func (s *Server) CheckAndPut(c *gin.Context) {
 	l := &model.Meta{}
 	if err := c.ShouldBindHeader(&l); err != nil {
+		s.log.Errorf("bind header, err %s", err)
+		c.Set(middleware.HttpMessage, err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -114,6 +135,8 @@ func (s *Server) CheckAndPut(c *gin.Context) {
 	keyStr := c.Param("key")
 	key, err := EncodeMetaKey(keyStr, l.Raw)
 	if err != nil {
+		s.log.Errorf("check key %s, err %s", keyStr, err)
+		c.Set(middleware.HttpMessage, err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid key"})
 		return
 	}
@@ -126,18 +149,21 @@ func (s *Server) CheckAndPut(c *gin.Context) {
 	entry, err := ioutil.ReadAll(c.Request.Body)
 	if err != nil {
 		s.log.Errorf("read body failed: %s", err)
+		c.Set(middleware.HttpMessage, err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	err = s.store.CheckAndPut(key, entry, opts)
 	if err == xerror.ErrCheckAndSetFailed {
+		c.Set(middleware.HttpMessage, err.Error())
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		return
 	} else if err == xerror.ErrAlreadyExists {
 		c.Status(http.StatusOK)
 		return
 	} else if err != nil {
+		c.Set(middleware.HttpMessage, err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -165,12 +191,16 @@ func (s *Server) List(c *gin.Context) {
 	l := &model.List{}
 	err := c.ShouldBindHeader(&l)
 	if err != nil {
+		s.log.Errorf("bind header, err %s", err)
+		c.Set(middleware.HttpMessage, err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	start, end, err := s.getRangeFromList(l)
 	if err != nil {
+		s.log.Errorf("list invalid, err %s", err)
+		c.Set(middleware.HttpMessage, err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -190,6 +220,7 @@ func (s *Server) List(c *gin.Context) {
 
 	keyEntry, err := s.store.List(start, end, l.Limit, opts)
 	if err != nil {
+		c.Set(middleware.HttpMessage, err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -197,6 +228,7 @@ func (s *Server) List(c *gin.Context) {
 	jsonBytes, err := json.Marshal(keyEntry)
 	if err != nil {
 		s.log.Errorf("list failed, %s", err)
+		c.Set(middleware.HttpMessage, err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -208,6 +240,8 @@ func (s *Server) AsyncBatchDelete(c *gin.Context) {
 	l := &model.List{}
 	err := c.ShouldBindHeader(&l)
 	if err != nil {
+		s.log.Errorf("bind header, err %s", err)
+		c.Set(middleware.HttpMessage, err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -262,6 +296,7 @@ func (s *Server) GetConfig(c *gin.Context) {
 
 func (s *Server) Health(c *gin.Context) {
 	if s.closed {
+		c.Set(middleware.HttpMessage, "closed")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "is closed"})
 		return
 	}
@@ -269,6 +304,7 @@ func (s *Server) Health(c *gin.Context) {
 	err := s.store.Health()
 	if err != nil {
 		s.log.Errorf("not health, %s", err)
+		c.Set(middleware.HttpMessage, err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
