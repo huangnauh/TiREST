@@ -91,7 +91,7 @@ func TimestampCheck(oldVal, newVal, existVal []byte) ([]byte, error) {
 	}
 
 	if oldV.UpdatedAt < existV.UpdatedAt {
-		logrus.Warnf("old %s < exist %s, new %s", oldVal, existVal, newVal)
+		logrus.Warnf("old %s < exist %d", oldVal, existV.UpdatedAt)
 		return nil, xerror.ErrCheckAndSetFailed
 	}
 
@@ -100,12 +100,12 @@ func TimestampCheck(oldVal, newVal, existVal []byte) ([]byte, error) {
 	}
 
 	if oldV.UpdatedAt > newV.UpdatedAt {
-		logrus.Warnf("old %s > new %s, exist %s", oldVal, newVal, existVal)
+		logrus.Warnf("old %s > new %d", oldVal, newV.UpdatedAt)
 		return nil, xerror.ErrCheckAndSetFailed
 	}
 
 	if existV.UpdatedAt > newV.UpdatedAt {
-		logrus.Warnf("exist %s > new %s, old %s", existVal, newVal, oldVal)
+		logrus.Warnf("new %s < exist %d", newVal, existV.UpdatedAt)
 		return nil, xerror.ErrCheckAndSetFailed
 	}
 
