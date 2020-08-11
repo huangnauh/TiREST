@@ -4,19 +4,15 @@ import (
 	"bytes"
 	"github.com/nsqio/go-diskqueue"
 	"github.com/sirupsen/logrus"
-	"gitlab.s.upyun.com/platform/tikv-proxy/utils"
 )
 
-type Formatter struct {
+type OriginFormatter struct {
 }
 
-func (f *Formatter) Format(entry *logrus.Entry) ([]byte, error) {
-	//Notice: PutBuf in logrus hook
-	var b *bytes.Buffer
-	if entry.Buffer != nil {
-		b = entry.Buffer
-	} else {
-		b = utils.GetBuf()
+func (f OriginFormatter) Format(entry *logrus.Entry) ([]byte, error) {
+	b := entry.Buffer
+	if b == nil {
+		b = &bytes.Buffer{}
 	}
 	b.WriteString(entry.Message)
 	return b.Bytes(), nil

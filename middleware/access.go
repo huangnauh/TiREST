@@ -112,7 +112,7 @@ func InitLog(fileName string, bufferSize int, maxBytes int, backupCount int) err
 
 	var err error
 	logWriter, err = log.NewRotatingOuter(fileName, bufferSize, maxBytes,
-		backupCount, &log.Formatter{})
+		backupCount, log.OriginFormatter{})
 	if err != nil {
 		return err
 	}

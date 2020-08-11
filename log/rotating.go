@@ -209,6 +209,7 @@ func (h *RotatingOuter) rotate() {
 	}
 }
 
+// logrus hook
 func (h *RotatingOuter) Levels() []logrus.Level {
 	return logrus.AllLevels
 }
