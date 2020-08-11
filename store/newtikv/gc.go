@@ -7,6 +7,7 @@ import (
 	"github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"github.com/pingcap/pd/v4/client"
 	"github.com/pingcap/tidb/kv"
+	"github.com/pingcap/tidb/metrics"
 	"github.com/pingcap/tidb/store/tikv"
 	"github.com/pingcap/tidb/store/tikv/oracle"
 	"github.com/pingcap/tidb/store/tikv/tikvrpc"
@@ -106,6 +107,7 @@ func (w *GCWorker) tickLock(ctx context.Context) {
 
 func (w *GCWorker) tick(ctx context.Context) {
 	w.log.Info("gc start")
+	metrics.GCWorkerCounter.WithLabelValues("run_job").Inc()
 	safePoint, newSafePointValue, err := w.calculateNewSafePoint()
 	if err != nil {
 		w.log.Errorf("calculateNewSafePoint failed %s", err)
@@ -126,11 +128,13 @@ func (w *GCWorker) tick(ctx context.Context) {
 	err = w.putSafePoint(tikv.GcSavedSafePoint, newSafePointValue)
 	if err != nil {
 		w.log.Errorf("putSafePoint %d failed %s", newSafePointValue, err)
+		metrics.GCJobFailureCounter.WithLabelValues("save_safe_point").Inc()
 		return
 	}
 	err = w.uploadSafePointToPD(ctx, newSafePointValue)
 	if err != nil {
 		w.log.Errorf("uploadSafePointToPD %d failed %s", newSafePointValue, err)
+		metrics.GCJobFailureCounter.WithLabelValues("upload_safe_point").Inc()
 		return
 	}
 }
@@ -196,7 +200,8 @@ func (w *GCWorker) resolveLocksForRange(ctx context.Context, safePoint uint64, s
 
 	var stat tikv.RangeTaskStat
 	key := startKey
-	bo := tikv.NewBackoffer(ctx, tikv.GcResolveLockMaxBackoff)
+	bo := tikv.NewBackofferWithVars(ctx, tikv.GcResolveLockMaxBackoff, nil)
+retryScanAndResolve:
 	for {
 		select {
 		case <-ctx.Done():
@@ -235,7 +240,7 @@ func (w *GCWorker) resolveLocksForRange(ctx context.Context, safePoint uint64, s
 		}
 		locksResp := resp.Resp.(*kvrpcpb.ScanLockResponse)
 		rerr := locksResp.GetError()
-		if err != nil {
+		if rerr != nil {
 			w.log.Errorf("scan lock to region %d, response %s", loc.Region.GetID(), rerr)
 			return stat, errors.New(rerr.String())
 		}
@@ -245,17 +250,34 @@ func (w *GCWorker) resolveLocksForRange(ctx context.Context, safePoint uint64, s
 			locks[i] = tikv.NewLock(locksInfo[i])
 		}
 
-		ok, err1 := w.store.GetLockResolver().BatchResolveLocks(bo, locks, loc.Region)
-		if err1 != nil {
-			w.log.Errorf("resolver lock to region %d, %s", loc.Region.GetID(), rerr)
-			return stat, err1
-		}
-		if !ok {
-			err = bo.Backoff(tikv.BoTxnLock, errors.New("remain locks"))
-			if err != nil {
-				return stat, err
+		for {
+			ok, err1 := w.store.GetLockResolver().BatchResolveLocks(bo, locks, loc.Region)
+			if err1 != nil {
+				w.log.Errorf("resolver lock to region %d, %s", loc.Region.GetID(), err1)
+				return stat, err1
 			}
-			continue
+			if !ok {
+				err = bo.Backoff(tikv.BoTxnLock, errors.New("remain locks"))
+				if err != nil {
+					w.log.Errorf("resolver lock to region %d, %s", loc.Region.GetID(), err)
+					return stat, err
+				}
+				stillInSame, refreshedLoc, err := w.tryRelocateLocksRegion(bo, locks)
+				if err != nil {
+					w.log.Errorf("try relocate locks region %d, %s", loc.Region.GetID(), err)
+					return stat, err
+				}
+				if stillInSame {
+					loc = refreshedLoc
+					continue
+				}
+				continue retryScanAndResolve
+			}
+			break
+		}
+
+		if len(locks) > 0 {
+			w.log.Infof("region %d resolve %d locks done %s", loc.Region.GetID(), len(locks), loc.EndKey)
 		}
 
 		if len(locks) < gcScanLockLimit {
@@ -263,10 +285,9 @@ func (w *GCWorker) resolveLocksForRange(ctx context.Context, safePoint uint64, s
 			key = loc.EndKey
 		} else {
 			w.log.Infof("region %d has more than limit locks", loc.Region.GetID())
+			metrics.GCRegionTooManyLocksCounter.Inc()
 			key = locks[len(locks)-1].Key
 		}
-
-		w.log.Debugf("region %d resolve %d locks done %s", loc.Region.GetID(), len(locks), loc.EndKey)
 
 		if len(key) == 0 || (len(endKey) != 0 && bytes.Compare(key, endKey) >= 0) {
 			break
@@ -278,6 +299,8 @@ func (w *GCWorker) resolveLocksForRange(ctx context.Context, safePoint uint64, s
 
 func (w *GCWorker) legacyResolveLocks(ctx context.Context, safePoint uint64, concurrency int) error {
 	w.log.Infof("start resolve locks safePoint %d concurrency %d", safePoint, concurrency)
+	metrics.GCWorkerCounter.WithLabelValues("resolve_locks").Inc()
+	startTime := time.Now()
 	handler := func(ctx context.Context, r kv.KeyRange) (tikv.RangeTaskStat, error) {
 		return w.resolveLocksForRange(ctx, safePoint, r.StartKey, r.EndKey)
 	}
@@ -289,5 +312,18 @@ func (w *GCWorker) legacyResolveLocks(ctx context.Context, safePoint uint64, con
 		return err
 	}
 	w.log.Infof("finish resolve locks %d %d", safePoint, runner.CompletedRegions())
+	metrics.GCHistogram.WithLabelValues("resolve_locks").Observe(time.Since(startTime).Seconds())
 	return nil
+}
+
+func (w *GCWorker) tryRelocateLocksRegion(bo *tikv.Backoffer, locks []*tikv.Lock) (stillInSameRegion bool, refreshedLoc *tikv.KeyLocation, err error) {
+	if len(locks) == 0 {
+		return
+	}
+	refreshedLoc, err = w.store.GetRegionCache().LocateKey(bo, locks[0].Key)
+	if err != nil {
+		return
+	}
+	stillInSameRegion = refreshedLoc.Contains(locks[len(locks)-1].Key)
+	return
 }
