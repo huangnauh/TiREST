@@ -224,13 +224,13 @@ func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte, check store.CheckOption) 
 
 	if err != nil {
 		t.log.Errorf("cas %s put failed %s", key, err)
-		return xerror.ErrSetKVFailed
+		return xerror.ErrCheckAndSetFailed
 	}
 
 	err = tx.Commit(ctx)
 	if err != nil {
 		t.log.Errorf("cas %s commit failed %s", key, err)
-		return xerror.ErrCommitKVFailed
+		return xerror.ErrCheckAndSetFailed
 	}
 	return nil
 }

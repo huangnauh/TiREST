@@ -8,6 +8,7 @@ import (
 	"gitlab.s.upyun.com/platform/tikv-proxy/log"
 	"gitlab.s.upyun.com/platform/tikv-proxy/middleware"
 	"gitlab.s.upyun.com/platform/tikv-proxy/server"
+	"io/ioutil"
 	"os"
 	"os/signal"
 	"syscall"
@@ -44,19 +45,23 @@ func runServer(c *cli.Context) error {
 	//	logrus.SetReportCaller(true)
 	//}
 	logrus.SetLevel(level)
-	logrus.SetFormatter(&logrus.TextFormatter{
-		TimestampFormat: "2006-01-02 15:04:05",
-		FullTimestamp:   true,
-	})
 	if conf.Log.ErrorLogDir != "" {
-		output, err := log.NewRotatingOuter(
-			conf.Log.ErrorLogDir, conf.Log.BufferSize, conf.Log.MaxBytes, conf.Log.BackupCount)
+		hook, err := log.NewRotatingOuter(
+			conf.Log.ErrorLogDir, conf.Log.BufferSize, conf.Log.MaxBytes, conf.Log.BackupCount,
+			&logrus.TextFormatter{
+				TimestampFormat: "2006-01-02 15:04:05",
+				FullTimestamp:   true,
+			})
 		if err != nil {
 			logrus.Errorf("init error log failed, err: %s", err)
 			return err
 		}
-		defer output.Close()
-		logrus.SetOutput(output)
+		defer hook.Close()
+
+		logrus.SetEntryBufferDisable(true)
+		logrus.SetFormatter(log.NullFormatter{})
+		logrus.SetOutput(ioutil.Discard)
+		logrus.AddHook(hook)
 	} else {
 		logrus.SetOutput(os.Stderr)
 	}

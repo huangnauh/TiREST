@@ -2,7 +2,10 @@ package log
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
+	"github.com/sirupsen/logrus"
+	"gitlab.s.upyun.com/platform/tikv-proxy/utils"
 	"io"
 	"os"
 	"path"
@@ -20,11 +23,12 @@ type RotatingOuter struct {
 	nBytes int // The number of bytes written to this file
 	writer WriteFlushCloser
 
-	bytesChan   chan []byte
+	bufChan     chan *bytes.Buffer
 	fileName    string
 	maxBytes    int
 	backupCount int
 	bufferSize  int
+	format      logrus.Formatter
 }
 
 type FileFlush struct {
@@ -74,7 +78,8 @@ func NewBufferWriter(fd *os.File, size int) WriteFlushCloser {
 	}
 }
 
-func NewRotatingOuter(fileName string, bufferSize int, maxBytes int, backupCount int) (*RotatingOuter, error) {
+func NewRotatingOuter(fileName string, bufferSize int, maxBytes int, backupCount int,
+	format logrus.Formatter) (*RotatingOuter, error) {
 	dir := path.Dir(fileName)
 	os.MkdirAll(dir, 0777)
 
@@ -96,12 +101,13 @@ func NewRotatingOuter(fileName string, bufferSize int, maxBytes int, backupCount
 	h.maxBytes = maxBytes
 	h.backupCount = backupCount
 	h.bufferSize = bufferSize
+	h.format = format
 
 	if err := h.openFile(); err != nil {
 		return nil, err
 	}
 
-	h.bytesChan = make(chan []byte, MaxBytesChan)
+	h.bufChan = make(chan *bytes.Buffer, MaxBytesChan)
 
 	go h.writeLoop()
 	return h, nil
@@ -113,42 +119,44 @@ func (h *RotatingOuter) writeLoop() {
 
 	for {
 		select {
-		case bytes, ok := <-h.bytesChan:
+		case buf, ok := <-h.bufChan:
 			if !ok {
 				fmt.Println("write done...")
 				return
 			}
 
-			if bytes == nil {
+			if buf == nil {
 				fmt.Println("write done...")
 				return
 			}
 
-			_, err = h.syncWrite(bytes)
+			data := buf.Bytes()
+			_, err = h.syncWrite(data)
 			if err != nil {
 				fmt.Printf("write error, %s\n", err)
 			}
+			utils.PutBuf(buf)
 		case <-flushTicker.C:
 			h.writer.Flush()
 		}
 	}
 }
 
-func (h *RotatingOuter) asyncPut(p []byte) {
+func (h *RotatingOuter) asyncPut(buf *bytes.Buffer) {
 	select {
-	case h.bytesChan <- p:
+	case h.bufChan <- buf:
 	default:
 	}
 }
 
-func (h *RotatingOuter) Write(p []byte) (int, error) {
-	h.asyncPut(p)
-	return len(p), nil
+func (h *RotatingOuter) WriteBuffer(buf *bytes.Buffer) (int, error) {
+	h.asyncPut(buf)
+	return buf.Len(), nil
 }
 
 func (h *RotatingOuter) Close() error {
 	fmt.Printf("log file %s close\n", h.fileName)
-	h.bytesChan <- nil // send nil to channel
+	h.bufChan <- nil // send nil to channel
 	err := h.writer.Close()
 	if err != nil {
 		fmt.Printf("log file %s close, %s\n", h.fileName, err)
@@ -199,4 +207,22 @@ func (h *RotatingOuter) rotate() {
 			fmt.Printf("open file err: %s\n", err)
 		}
 	}
+}
+
+// logrus hook
+func (h *RotatingOuter) Levels() []logrus.Level {
+	return logrus.AllLevels
+}
+
+func (h *RotatingOuter) Fire(entry *logrus.Entry) error {
+	//Notice: PutBuf in writeLoop
+	originBuffer := entry.Buffer
+	entry.Buffer = utils.GetBuf()
+	_, err := h.format.Format(entry)
+	if err != nil {
+		return err
+	}
+	_, err = h.WriteBuffer(entry.Buffer)
+	entry.Buffer = originBuffer
+	return err
 }
