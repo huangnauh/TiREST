@@ -69,7 +69,7 @@ func (m *Metric) mustRegister() {
 	prometheus.MustRegister(m.inFlightGauge, m.requestTotal, m.requestDuration, m.requestSize, m.responseSize)
 }
 
-func (m *Metric) handlerFunc() gin.HandlerFunc {
+func (m *Metric) handlerFunc(abnormal bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 		requestSize := c.Request.ContentLength
@@ -77,7 +77,8 @@ func (m *Metric) handlerFunc() gin.HandlerFunc {
 		defer m.inFlightGauge.Dec()
 		c.Next()
 
-		status := strconv.Itoa(c.Writer.Status())
+		respStatus := c.Writer.Status()
+		status := strconv.Itoa(respStatus)
 		now := time.Now()
 		latency := now.Sub(start)
 		responseSize := c.Writer.Size()
@@ -91,6 +92,10 @@ func (m *Metric) handlerFunc() gin.HandlerFunc {
 			return
 		}
 
+		if abnormal && (respStatus < 400 || respStatus == 404) {
+			return
+		}
+
 		msg := ""
 		if val, ok := c.Get(HttpMessage); ok && val != nil {
 			msg, _ = val.(string)
@@ -98,7 +103,7 @@ func (m *Metric) handlerFunc() gin.HandlerFunc {
 
 		logger.Infof("%s %s %s %s %d %d %d %s '%s'\n", c.Request.RemoteAddr,
 			now.Format("2006-01-02T15:04:05.999"), c.Request.Method, c.Request.URL,
-			c.Writer.Status(), requestSize, responseSize, latency, msg)
+			respStatus, requestSize, responseSize, latency, msg)
 	}
 }
 
@@ -130,6 +135,6 @@ func CloseAccessLog() {
 	}
 }
 
-func SetAccessLog() gin.HandlerFunc {
-	return metric.handlerFunc()
+func SetAccessLog(abnormal bool) gin.HandlerFunc {
+	return metric.handlerFunc(abnormal)
 }

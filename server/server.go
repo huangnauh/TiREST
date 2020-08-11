@@ -31,7 +31,7 @@ func NewServer(conf *config.Config) (*Server, error) {
 	mode := conf.HttpServerMode()
 	gin.SetMode(mode)
 	router := gin.New()
-	router.Use(middleware.SetAccessLog())
+	router.Use(middleware.SetAccessLog(true))
 	if mode != gin.DebugMode {
 		router.Use(gin.Recovery())
 	}
