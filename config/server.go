@@ -70,12 +70,13 @@ type Server struct {
 }
 
 type Log struct {
-	Level        string `toml:"level"`
-	ErrorLogDir  string `toml:"error-log-dir"`
-	AccessLogDir string `toml:"access-log-dir"`
-	BufferSize   int    `toml:"buffer-size"`
-	MaxBytes     int    `toml:"max-bytes"`
-	BackupCount  int    `toml:"backup_count"`
+	Level             string `toml:"level"`
+	ErrorLogDir       string `toml:"error-log-dir"`
+	AccessLogDir      string `toml:"access-log-dir"`
+	AbnormalAccessLog bool   `toml:"abnormal-access-log"`
+	BufferSize        int    `toml:"buffer-size"`
+	MaxBytes          int    `toml:"max-bytes"`
+	BackupCount       int    `toml:"backup_count"`
 }
 
 type Config struct {
@@ -132,12 +133,13 @@ func DefaultConfig() *Config {
 			WriteTimeout:    &Duration{50 * time.Millisecond},
 		},
 		Log: Log{
-			Level:        "debug",
-			ErrorLogDir:  "",
-			AccessLogDir: "",
-			BufferSize:   100 * 1024,
-			MaxBytes:     512 * 1024 * 1024,
-			BackupCount:  10,
+			Level:             "debug",
+			ErrorLogDir:       "",
+			AccessLogDir:      "",
+			AbnormalAccessLog: false,
+			BufferSize:        100 * 1024,
+			MaxBytes:          512 * 1024 * 1024,
+			BackupCount:       10,
 		},
 		EnableTracing: true,
 	}

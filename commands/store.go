@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/sirupsen/logrus"
@@ -190,8 +191,17 @@ func runKVGet(c *cli.Context) error {
 		fmt.Printf("encode key, err: %s\n", err)
 		return err
 	}
-	fmt.Printf("encode key, %v\n", meta)
-	fmt.Printf("encode key, %s\n", meta)
+	//fmt.Printf("encode key, %v\n", meta)
+	//fmt.Printf("encode key, %s\n", meta)
+	if raw {
+		fmt.Printf("encode url, %s\n", base64.URLEncoding.EncodeToString([]byte(key)))
+	} else {
+		uKey, err := base64.URLEncoding.DecodeString(key)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("decode url, %s\n", uKey)
+	}
 	s, err := getStore(c)
 	if err != nil {
 		return err
