@@ -19,6 +19,7 @@ type Metric struct {
 }
 
 const HttpMessage = "msg"
+const slowRequest = 50 * time.Millisecond
 
 var metric = newMetric()
 var logger *logrus.Logger
@@ -92,7 +93,7 @@ func (m *Metric) handlerFunc(abnormal bool) gin.HandlerFunc {
 			return
 		}
 
-		if abnormal && (respStatus < 400 || respStatus == 404) {
+		if abnormal && (latency < slowRequest) && (respStatus < 400 || respStatus == 404) {
 			return
 		}
 
