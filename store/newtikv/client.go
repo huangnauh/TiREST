@@ -51,7 +51,7 @@ func (d Driver) Open(conf *config.Config) (store.DB, error) {
 
 	//TODO: set config
 	cfg := tikvConfig.GetGlobalConfig()
-	cfg.Log.Level = conf.Log.Level
+	cfg.Log.Level = conf.Store.Level
 	cfg.Log.EnableSlowLog = false
 	tikvConfig.StoreGlobalConfig(cfg)
 	err := logutil.InitZapLogger(cfg.Log.ToLogConfig())
