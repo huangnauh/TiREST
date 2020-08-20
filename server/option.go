@@ -17,3 +17,15 @@ func DefaultCheckOption() store.CheckOption {
 		Check: TimestampCheck,
 	}
 }
+
+func ExactCheckOption() store.CheckOption {
+	return store.CheckOption{
+		Check: ExactCheck,
+	}
+}
+
+func NopCheckOption() store.CheckOption {
+	return store.CheckOption{
+		Check: NopCheck,
+	}
+}

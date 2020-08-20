@@ -8,6 +8,7 @@ import (
 	tikvConfig "github.com/pingcap/tidb/config"
 	"github.com/pingcap/tidb/kv"
 	"github.com/pingcap/tidb/store/tikv"
+	"github.com/pingcap/tidb/store/tikv/oracle/oracles"
 	"github.com/pingcap/tidb/store/tikv/tikvrpc"
 	"github.com/pingcap/tidb/util/logutil"
 	"github.com/sirupsen/logrus"
@@ -26,13 +27,14 @@ type Range struct {
 }
 
 type TiKV struct {
-	client     kv.Storage
-	store      tikv.Storage
-	pdClient   pd.Client
-	cancel     context.CancelFunc
-	conf       *config.Config
-	log        *logrus.Entry
-	deleteChan chan Range
+	client          kv.Storage
+	store           tikv.Storage
+	pdClient        pd.Client
+	cancel          context.CancelFunc
+	conf            *config.Config
+	log             *logrus.Entry
+	deleteChan      chan Range
+	disableLockVars *kv.Variables
 }
 
 type Driver struct {
@@ -49,7 +51,9 @@ func (d Driver) Name() string {
 func (d Driver) Open(conf *config.Config) (store.DB, error) {
 	driver := tikv.Driver{}
 
-	//TODO: set config
+	if conf.Store.TsoSlowThreshold != nil {
+		oracles.SlowDist = conf.Store.TsoSlowThreshold.Duration
+	}
 	cfg := tikvConfig.GetGlobalConfig()
 	cfg.Log.Level = conf.Store.Level
 	cfg.Log.EnableSlowLog = false
@@ -61,11 +65,16 @@ func (d Driver) Open(conf *config.Config) (store.DB, error) {
 		return nil, err
 	}
 
+	var ignoreKill uint32
+	disableLockVars := kv.NewVariables(&ignoreKill)
+	disableLockVars.DisableLockBackOff = true
+
 	t := &TiKV{
-		client:     s,
-		conf:       conf,
-		deleteChan: make(chan Range, 10),
-		log:        logrus.WithFields(logrus.Fields{"worker": DBName}),
+		client:          s,
+		conf:            conf,
+		deleteChan:      make(chan Range, 10),
+		log:             logrus.WithFields(logrus.Fields{"worker": DBName}),
+		disableLockVars: disableLockVars,
 	}
 
 	if conf.Store.GCEnable {
@@ -198,7 +207,12 @@ func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte, check store.CheckOption) 
 		return xerror.ErrGetTimestampFailed
 	}
 
+	if t.conf.Store.DisableLockBackOff {
+		tx.SetVars(t.disableLockVars)
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.WriteTimeout.Duration)
+
 	defer cancel()
 	t.log.Debugf("get key %s", key)
 	existVal, err := tx.Get(ctx, key)

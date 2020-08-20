@@ -45,6 +45,8 @@ type Store struct {
 	WriteTimeout       *Duration `toml:"write-timeout"`
 	BatchPutTimeout    *Duration `toml:"batch-put-timeout"`
 	BatchDeleteTimeout *Duration `toml:"batch-delete-timeout"`
+	TsoSlowThreshold   *Duration `toml:"tso-slow-threshold"`
+	DisableLockBackOff bool      `toml:"disable-lock-back-off"`
 }
 
 func (d *Duration) UnmarshalText(text []byte) error {
@@ -92,7 +94,7 @@ func DefaultConfig() *Config {
 		Store: Store{
 			Name:               "tikv",
 			Path:               "tikv://127.0.0.1:2379",
-			Level:              "error",
+			Level:              "warn",
 			PdAddresses:        []string{"127.0.0.1:2379"},
 			GCEnable:           true,
 			ReadTimeout:        &Duration{10 * time.Second},
@@ -100,6 +102,7 @@ func DefaultConfig() *Config {
 			ListTimeout:        &Duration{60 * time.Second},
 			BatchPutTimeout:    &Duration{60 * time.Second},
 			BatchDeleteTimeout: &Duration{10 * time.Minute},
+			TsoSlowThreshold:   &Duration{150 * time.Millisecond},
 		},
 		Server: Server{
 			HttpHost:          "127.0.0.1",
@@ -133,7 +136,7 @@ func DefaultConfig() *Config {
 			WriteTimeout:    &Duration{50 * time.Millisecond},
 		},
 		Log: Log{
-			Level:             "debug",
+			Level:             "info",
 			ErrorLogDir:       "",
 			AccessLogDir:      "",
 			AbnormalAccessLog: false,
