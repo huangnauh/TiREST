@@ -25,4 +25,7 @@ require (
 	golang.org/x/sys v0.0.0-20200808120158-1030fc2bf1d9 // indirect
 )
 
-replace github.com/sirupsen/logrus v1.6.1-0.20200528085638-6699a89a232f => github.com/huangnauh/logrus v1.6.2
+replace (
+	github.com/pingcap/tidb v1.1.0-beta.0.20200731004449-a63fa79d90c5 => github.com/huangnauh/tidb v1.1.0-beta.0.20200820055940-4b0a3daff769
+	github.com/sirupsen/logrus v1.6.1-0.20200528085638-6699a89a232f => github.com/huangnauh/logrus v1.6.2
+)

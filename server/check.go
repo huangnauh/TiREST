@@ -8,6 +8,10 @@ import (
 	"reflect"
 )
 
+func NopCheck(_, newVal, _ []byte) ([]byte, error) {
+	return newVal, nil
+}
+
 // old == exist
 func ExactCheck(oldVal, newVal, existVal []byte) ([]byte, error) {
 	if bytes.Equal(newVal, existVal) {

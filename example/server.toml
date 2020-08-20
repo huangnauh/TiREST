@@ -3,12 +3,14 @@ enable-tracing = true
 [store]
   name = "newtikv"
   path = "tikv://10.0.5.89:2379"
+  level = "debug"
   gc-enable = true
   pd-address = ["10.0.5.89:2379"]
   read-timeout = "10s"
   list-timeout = "1m0s"
   write-timeout = "10s"
   batch-delete-timeout = "10m0s"
+  disable-lock-back-off = false
 
 [server]
   http-host = "127.0.0.1"

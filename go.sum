@@ -321,6 +321,8 @@ github.com/hpcloud/tail v1.0.0 h1:nfCOvKYfkgYP8hkirhJocXT2+zOD8yUNjXaWfTlyFKI=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
 github.com/huangnauh/logrus v1.6.2 h1:QC9p/HCRsFe6MWjIedOEiG4q6bxlGs8JXR/k/a2LalQ=
 github.com/huangnauh/logrus v1.6.2/go.mod h1:yWOB1SBYBC5VeMP7gHvWumXLIWorT60ONWic61uBYv0=
+github.com/huangnauh/tidb v1.1.0-beta.0.20200820055940-4b0a3daff769 h1:oCu9GDkVPzpTlf+wnMm4HHkPeUSp07QitkYDoBNLbWQ=
+github.com/huangnauh/tidb v1.1.0-beta.0.20200820055940-4b0a3daff769/go.mod h1:tGL4bibikUVvAbzS9rdcqBg2AIVRttZYmGCl0+wAUQk=
 github.com/hypnoglow/gormzap v0.3.0/go.mod h1:5Wom8B7Jl2oK0Im9hs6KQ+Kl92w4Y7gKCrj66rhyvw0=
 github.com/iancoleman/strcase v0.0.0-20191112232945-16388991a334 h1:VHgatEHNcBFEB7inlalqfNqw65aNkM1lGX2yt3NmbS8=
 github.com/iancoleman/strcase v0.0.0-20191112232945-16388991a334/go.mod h1:SK73tn/9oHe+/Y0h39VT4UCxmurVJkR5NA7kMEAOgSE=
@@ -566,8 +568,6 @@ github.com/pingcap/tidb v1.1.0-beta.0.20200604055950-efc1c154d098 h1:O930BM9xqiV
 github.com/pingcap/tidb v1.1.0-beta.0.20200604055950-efc1c154d098/go.mod h1:UMxsNE326wyfgFJCx6aerPRLj1/tGPYDBKS9T9NOHI8=
 github.com/pingcap/tidb v1.1.0-beta.0.20200610060912-f12cdc42010f/go.mod h1:jyXOvS9k0PTxYHju2OgySOe9FtydA52TiQ5bXAaKyQE=
 github.com/pingcap/tidb v1.1.0-beta.0.20200721005019-f5c6e59f0daf/go.mod h1:dYCOFXJsoqBumpxAyBqCG3WZriIY7JgeBZHgvfARDa8=
-github.com/pingcap/tidb v1.1.0-beta.0.20200731004449-a63fa79d90c5 h1:9I/TzJreppQ/QB/XsgDRidpGVj3Q+FYRYPI/PjXW7MM=
-github.com/pingcap/tidb v1.1.0-beta.0.20200731004449-a63fa79d90c5/go.mod h1:tGL4bibikUVvAbzS9rdcqBg2AIVRttZYmGCl0+wAUQk=
 github.com/pingcap/tidb-tools v4.0.0-beta.1.0.20200306084441-875bd09aa3d5+incompatible/go.mod h1:XGdcy9+yqlDSEMTpOXnwf3hiTeqrV6MN/u1se9N8yIM=
 github.com/pingcap/tidb-tools v4.0.0-rc.1.0.20200421113014-507d2bb3a15e+incompatible/go.mod h1:XGdcy9+yqlDSEMTpOXnwf3hiTeqrV6MN/u1se9N8yIM=
 github.com/pingcap/tidb-tools v4.0.0-rc.1.0.20200514040632-f76b3e428e19+incompatible h1:/JKsYjsa5Ug8v5CN4zIbJGIqsvgBUkGwaP/rEScVvWM=
