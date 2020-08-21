@@ -3,7 +3,7 @@ enable-tracing = true
 [store]
   name = "newtikv"
   path = "tikv://192.168.30.22:2379,192.168.30.23:2379,192.168.30.24:2379"
-  gc-enable = true
+  gc-enable = false
   pd-address = []
   read-timeout = "10s"
   list-timeout = "1m0s"

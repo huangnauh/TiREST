@@ -10,6 +10,7 @@ import (
 	"github.com/pingcap/tidb/store/tikv"
 	"github.com/pingcap/tidb/store/tikv/oracle/oracles"
 	"github.com/pingcap/tidb/store/tikv/tikvrpc"
+	"github.com/pingcap/tidb/util/execdetails"
 	"github.com/pingcap/tidb/util/logutil"
 	"github.com/sirupsen/logrus"
 	"gitlab.s.upyun.com/platform/tikv-proxy/config"
@@ -17,9 +18,18 @@ import (
 	"gitlab.s.upyun.com/platform/tikv-proxy/utils"
 	"gitlab.s.upyun.com/platform/tikv-proxy/xerror"
 	"sync"
+	"time"
 )
 
-const DBName = "newtikv"
+const (
+	DBName   = "newtikv"
+	slowTime = 10 * time.Millisecond
+
+	MethodGet  = "GET"
+	MethodCas  = "CAS"
+	MethodPut  = "PUT"
+	MethodList = "LIST"
+)
 
 type Range struct {
 	Start []byte
@@ -113,18 +123,30 @@ func (t *TiKV) Get(key []byte, option store.GetOption) (store.Value, error) {
 		return store.NoValue, xerror.ErrGetTimestampFailed
 	}
 	t.log.Debugf("start ts %d, %s", tx.StartTS(), key)
+	snapshot := tx.GetSnapshot()
+	snapshotStats := &tikv.SnapshotRuntimeStats{}
+	snapshot.SetOption(kv.CollectRuntimeStats, snapshotStats)
 	if option.ReplicaRead {
-		snapshot := tx.GetSnapshot()
 		snapshot.SetOption(kv.ReplicaRead, kv.ReplicaReadFollower)
 	}
 
+	start := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.ReadTimeout.Duration)
+	execDetail := &execdetails.StmtExecDetails{}
+	ctx = context.WithValue(ctx, execdetails.StmtExecDetailKey, execDetail)
 	defer cancel()
 	v, err := tx.Get(ctx, key)
 	secondary := false
 	if kv.IsErrNotFound(err) && option.Secondary != nil {
 		secondary = true
 		v, err = tx.Get(ctx, option.Secondary)
+	}
+
+	metric.Observe(MethodGet, execDetail, nil)
+	spend := time.Now().Sub(start)
+	if spend > t.conf.Log.SlowRequest.Duration {
+		t.log.Warnf("get %s, secondary %t, slow request %s %s, snapshot %s",
+			key, secondary, spend, execDetailsString(execDetail), snapshotStats)
 	}
 
 	if kv.IsErrNotFound(err) {
@@ -148,8 +170,10 @@ func (t *TiKV) List(start, end []byte, limit int, option store.ListOption) ([]st
 		tx.SetOption(kv.KeyOnly, true)
 	}
 
+	snapshot := tx.GetSnapshot()
+	snapshotStats := &tikv.SnapshotRuntimeStats{}
+	snapshot.SetOption(kv.CollectRuntimeStats, snapshotStats)
 	if option.ReplicaRead {
-		snapshot := tx.GetSnapshot()
 		snapshot.SetOption(kv.ReplicaRead, kv.ReplicaReadFollower)
 	}
 
@@ -211,10 +235,19 @@ func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte, check store.CheckOption) 
 		tx.SetVars(t.disableLockVars)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.WriteTimeout.Duration)
+	snapshot := tx.GetSnapshot()
+	snapshotStats := &tikv.SnapshotRuntimeStats{}
+	snapshot.SetOption(kv.CollectRuntimeStats, snapshotStats)
 
+	start := time.Now()
+	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.WriteTimeout.Duration)
+	var commitDetail *execdetails.CommitDetails
+	ctx = context.WithValue(ctx, execdetails.CommitDetailCtxKey, &commitDetail)
+	execDetail := &execdetails.StmtExecDetails{}
+	ctx = context.WithValue(ctx, execdetails.StmtExecDetailKey, execDetail)
 	defer cancel()
 	t.log.Debugf("get key %s", key)
+
 	existVal, err := tx.Get(ctx, key)
 	if kv.IsErrNotFound(err) {
 		existVal = nil
@@ -242,6 +275,14 @@ func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte, check store.CheckOption) 
 	}
 
 	err = tx.Commit(ctx)
+
+	metric.Observe(MethodCas, execDetail, commitDetail)
+	spend := time.Now().Sub(start)
+	if spend > t.conf.Log.SlowRequest.Duration {
+		t.log.Warnf("cas %s, slow request %s %s %s, snapshot %s",
+			key, spend, execDetailsString(execDetail), commitDetailsString(commitDetail), snapshotStats)
+	}
+
 	if err != nil {
 		t.log.Errorf("cas %s commit failed %s", key, err)
 		return xerror.ErrCheckAndSetFailed

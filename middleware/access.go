@@ -11,15 +11,15 @@ import (
 )
 
 type Metric struct {
-	inFlightGauge   prometheus.Gauge
-	requestTotal    *prometheus.CounterVec
-	requestDuration *prometheus.SummaryVec
-	requestSize     *prometheus.SummaryVec
-	responseSize    *prometheus.SummaryVec
+	inFlightGauge            prometheus.Gauge
+	requestTotal             *prometheus.CounterVec
+	requestDuration          *prometheus.SummaryVec
+	requestDurationHistogram *prometheus.HistogramVec
+	requestSize              *prometheus.SummaryVec
+	responseSize             *prometheus.SummaryVec
 }
 
 const HttpMessage = "msg"
-const slowRequest = 50 * time.Millisecond
 
 var metric = newMetric()
 var logger *logrus.Logger
@@ -49,6 +49,14 @@ func newMetric() *Metric {
 			},
 			[]string{"code", "method"},
 		),
+		requestDurationHistogram: prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Name:    "gin_request_duration",
+				Help:    "Bucketed histogram of request latencies.",
+				Buckets: prometheus.ExponentialBuckets(0.0001, 2, 21), // 0.1ms ~ 104s
+			},
+			[]string{"code", "method"},
+		),
 		requestSize: prometheus.NewSummaryVec(
 			prometheus.SummaryOpts{
 				Name: "gin_request_size_bytes",
@@ -67,10 +75,11 @@ func newMetric() *Metric {
 }
 
 func (m *Metric) mustRegister() {
-	prometheus.MustRegister(m.inFlightGauge, m.requestTotal, m.requestDuration, m.requestSize, m.responseSize)
+	prometheus.MustRegister(m.inFlightGauge, m.requestTotal, m.requestDuration,
+		m.requestDurationHistogram, m.requestSize, m.responseSize)
 }
 
-func (m *Metric) handlerFunc(abnormal bool) gin.HandlerFunc {
+func (m *Metric) handlerFunc(abnormal bool, slowRequest time.Duration) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 		requestSize := c.Request.ContentLength
@@ -86,7 +95,8 @@ func (m *Metric) handlerFunc(abnormal bool) gin.HandlerFunc {
 
 		m.requestSize.WithLabelValues(status, c.Request.Method).Observe(float64(requestSize))
 		m.responseSize.WithLabelValues(status, c.Request.Method).Observe(float64(responseSize))
-		m.requestDuration.WithLabelValues(status, c.Request.Method).Observe(float64(latency) / float64(time.Second))
+		m.requestDuration.WithLabelValues(status, c.Request.Method).Observe(latency.Seconds())
+		m.requestDurationHistogram.WithLabelValues(status, c.Request.Method).Observe(latency.Seconds())
 		m.requestTotal.WithLabelValues(status, c.Request.Method).Inc()
 
 		if logger == nil {
@@ -136,6 +146,6 @@ func CloseAccessLog() {
 	}
 }
 
-func SetAccessLog(abnormal bool) gin.HandlerFunc {
-	return metric.handlerFunc(abnormal)
+func SetAccessLog(abnormal bool, slowRequest time.Duration) gin.HandlerFunc {
+	return metric.handlerFunc(abnormal, slowRequest)
 }

@@ -194,10 +194,11 @@ func runKVGet(c *cli.Context) error {
 	//fmt.Printf("encode key, %v\n", meta)
 	//fmt.Printf("encode key, %s\n", meta)
 	if raw {
-		fmt.Printf("encode url, %s\n", base64.URLEncoding.EncodeToString([]byte(key)))
+		fmt.Printf("encode url, %s\n", base64.RawURLEncoding.EncodeToString([]byte(key)))
 	} else {
-		uKey, err := base64.URLEncoding.DecodeString(key)
+		uKey, err := base64.RawURLEncoding.DecodeString(key)
 		if err != nil {
+			fmt.Printf("decode key, err: %s\n", err)
 			return err
 		}
 		fmt.Printf("decode url, %s\n", uKey)
