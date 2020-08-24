@@ -4,6 +4,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+	"gitlab.s.upyun.com/platform/tikv-proxy/utils/json"
 	"io/ioutil"
 	"os"
 	"time"
@@ -168,6 +169,15 @@ func (c *Config) HttpServerMode() string {
 	}
 
 	return gin.ReleaseMode
+}
+
+func (c *Config) String() string {
+	jsonBytes, err := json.Marshal(c)
+	if err != nil {
+		logrus.Errorf("json marshal config, err: %s", err)
+		return ""
+	}
+	return string(jsonBytes)
 }
 
 func InitConfig(configFile string) (*Config, error) {

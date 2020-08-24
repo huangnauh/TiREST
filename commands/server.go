@@ -36,6 +36,7 @@ func runServer(c *cli.Context) error {
 		logrus.Errorf("init config failed, err: %s", err)
 		return err
 	}
+	logrus.Infof("%s", conf)
 
 	level, err := logrus.ParseLevel(conf.Log.Level)
 	if err != nil {

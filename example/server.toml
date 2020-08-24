@@ -16,18 +16,18 @@ enable-tracing = true
   http-host = "127.0.0.1"
   http-port = 6100
   replica-read = false
-  read-timeout = "10s"
+  read-timeout = "2s"
   conn-timeout = "1s"
-  read-header-timeout = "5s"
-  write-timeout = "10s"
+  read-header-timeout = "2s"
+  write-timeout = "60s"
   idle-timeout = "2m0s"
   sleep-before-close = "1ms"
 
 [connector]
   name = "kafka"
   version = "0.9.0.1"
-  enable-producer = true
-  debug-producer = true
+  enable-producer = false
+  debug-producer = false
   broker-list = ["10.0.5.89:2379"]
   fetch-metadata = true
   entry = 10000

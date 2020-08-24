@@ -117,12 +117,14 @@ func (t *TiKV) Close() error {
 }
 
 func (t *TiKV) Get(key []byte, option store.GetOption) (store.Value, error) {
+	start := time.Now()
 	tx, err := t.client.Begin()
 	if err != nil {
 		t.log.Errorf("client begin failed %s", err)
 		return store.NoValue, xerror.ErrGetTimestampFailed
 	}
-	t.log.Debugf("start ts %d, %s", tx.StartTS(), key)
+	startTs := tx.StartTS()
+	t.log.Debugf("start ts %d, %s", startTs, key)
 	snapshot := tx.GetSnapshot()
 	snapshotStats := &tikv.SnapshotRuntimeStats{}
 	snapshot.SetOption(kv.CollectRuntimeStats, snapshotStats)
@@ -130,7 +132,6 @@ func (t *TiKV) Get(key []byte, option store.GetOption) (store.Value, error) {
 		snapshot.SetOption(kv.ReplicaRead, kv.ReplicaReadFollower)
 	}
 
-	start := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.ReadTimeout.Duration)
 	execDetail := &execdetails.StmtExecDetails{}
 	ctx = context.WithValue(ctx, execdetails.StmtExecDetailKey, execDetail)
@@ -145,8 +146,8 @@ func (t *TiKV) Get(key []byte, option store.GetOption) (store.Value, error) {
 	metric.Observe(MethodGet, execDetail, nil)
 	spend := time.Now().Sub(start)
 	if spend > t.conf.Log.SlowRequest.Duration {
-		t.log.Warnf("get %s, secondary %t, slow request %s %s, snapshot %s",
-			key, secondary, spend, execDetailsString(execDetail), snapshotStats)
+		t.log.Warnf("get %s, start_ts %d, secondary %t, slow request %s %s, snapshot %s",
+			key, startTs, secondary, spend, execDetailsString(execDetail), snapshotStats)
 	}
 
 	if kv.IsErrNotFound(err) {
@@ -225,11 +226,13 @@ func (t *TiKV) List(start, end []byte, limit int, option store.ListOption) ([]st
 }
 
 func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte, check store.CheckOption) error {
+	start := time.Now()
 	tx, err := t.client.Begin()
 	if err != nil {
 		t.log.Errorf("client begin failed %s", err)
 		return xerror.ErrGetTimestampFailed
 	}
+	startTs := tx.StartTS()
 
 	if t.conf.Store.DisableLockBackOff {
 		tx.SetVars(t.disableLockVars)
@@ -239,7 +242,6 @@ func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte, check store.CheckOption) 
 	snapshotStats := &tikv.SnapshotRuntimeStats{}
 	snapshot.SetOption(kv.CollectRuntimeStats, snapshotStats)
 
-	start := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), t.conf.Store.WriteTimeout.Duration)
 	var commitDetail *execdetails.CommitDetails
 	ctx = context.WithValue(ctx, execdetails.CommitDetailCtxKey, &commitDetail)
@@ -279,8 +281,9 @@ func (t *TiKV) CheckAndPut(key, oldVal, newVal []byte, check store.CheckOption) 
 	metric.Observe(MethodCas, execDetail, commitDetail)
 	spend := time.Now().Sub(start)
 	if spend > t.conf.Log.SlowRequest.Duration {
-		t.log.Warnf("cas %s, slow request %s %s %s, snapshot %s",
-			key, spend, execDetailsString(execDetail), commitDetailsString(commitDetail), snapshotStats)
+		t.log.Warnf("cas %s, start_ts %d, slow request %s %s %s, snapshot %s",
+			key, startTs, spend, execDetailsString(execDetail),
+			commitDetailsString(commitDetail), snapshotStats)
 	}
 
 	if err != nil {
