@@ -20,7 +20,7 @@ endif
 #	go build -tags=jsoniter -ldflags '$(GOLDFLAGS)' -o tikv-proxy main.go
 
 
-tikv:
+app:
 #	git checkout main.go
 #	sed -i $(SED_EXTENSION) '/\/newtikv"/s/\/\///' main.go
 	go build -tags=jsoniter -ldflags '$(GOLDFLAGS)' -o bin/tikv-proxy$(GOOS) main.go

@@ -172,7 +172,7 @@ func (c *Config) HttpServerMode() string {
 }
 
 func (c *Config) String() string {
-	jsonBytes, err := json.Marshal(c)
+	jsonBytes, err := json.MarshalIndent(c, "", " ")
 	if err != nil {
 		logrus.Errorf("json marshal config, err: %s", err)
 		return ""
