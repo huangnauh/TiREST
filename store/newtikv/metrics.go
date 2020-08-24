@@ -163,6 +163,8 @@ func registerMetrics() {
 	prometheus.MustRegister(metrics.TiKVTTLLifeTimeReachCounter)
 	prometheus.MustRegister(metrics.TiKVNoAvailableConnectionCounter)
 
+	prometheus.MustRegister(metrics.TSFutureWaitDuration)
+
 	prometheus.MustRegister(metrics.GCHistogram)
 	prometheus.MustRegister(metrics.GCJobFailureCounter)
 	prometheus.MustRegister(metrics.GCRegionTooManyLocksCounter)
