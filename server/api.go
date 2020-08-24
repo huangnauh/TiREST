@@ -9,6 +9,7 @@ import (
 	"gitlab.s.upyun.com/platform/tikv-proxy/utils/json"
 	"gitlab.s.upyun.com/platform/tikv-proxy/xerror"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"strconv"
 )
@@ -110,7 +111,11 @@ func (s *Server) UnsafePut(c *gin.Context) {
 	if err != nil {
 		s.log.Errorf("read body failed: %s", err)
 		c.Set(middleware.HttpMessage, err.Error())
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if e, ok := err.(net.Error); ok && e.Timeout() {
+			c.JSON(499, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		}
 		return
 	}
 
@@ -150,7 +155,11 @@ func (s *Server) CheckAndPut(c *gin.Context) {
 	if err != nil {
 		s.log.Errorf("read body failed: %s", err)
 		c.Set(middleware.HttpMessage, err.Error())
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if e, ok := err.(net.Error); ok && e.Timeout() {
+			c.JSON(499, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		}
 		return
 	}
 
