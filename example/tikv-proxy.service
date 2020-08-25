@@ -1,11 +1,11 @@
 [Unit]
 Description=tikv-proxy.service
 After=network.target
-ConditionPathExists=/disk/ssd6/
+ConditionPathExists=/disk/ssd1/
 
 [Service]
-ExecStart=/disk/ssd6/tikv-proxy/tikv-proxy server --conf=/disk/ssd6/tikv-proxy/service.toml
-WorkingDirectory=/disk/ssd6/tikv-proxy/
+ExecStart=/disk/ssd1/tikv-proxy/tikv-proxy server --conf=/disk/ssd1/tikv-proxy/service.toml
+WorkingDirectory=/disk/ssd1/tikv-proxy/
 Restart=always
 LimitCORE=infinity
 LimitNOFILE=100000

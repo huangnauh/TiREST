@@ -3,24 +3,27 @@ enable-tracing = true
 [store]
   name = "newtikv"
   path = "tikv://192.168.30.22:2379,192.168.30.23:2379,192.168.30.24:2379"
-  gc-enable = false
   pd-address = []
+  level = "warn"
+  gc-enable = true
   read-timeout = "10s"
   list-timeout = "1m0s"
   write-timeout = "10s"
   batch-put-timeout = "1m0s"
   batch-delete-timeout = "10m0s"
+  tso-slow-threshold = "100ms"
+  disable-lock-back-off = true
 
 [server]
   http-host = "192.168.14.101"
   http-port = 6100
   replica-read = false
-  read-timeout = "10s"
+  read-timeout = "2s"
   conn-timeout = "1s"
-  read-header-timeout = "5s"
-  write-timeout = "10s"
+  read-header-timeout = "1s"
+  write-timeout = "1m0s"
   idle-timeout = "2m0s"
-  sleep-before-close = "5s"
+  sleep-before-close = "10s"
 
 [connector]
   name = "kafka"
@@ -32,7 +35,7 @@ enable-tracing = true
   entry = 10000
   topic = "tikvmeta"
   partition-num = 512
-  queue-data-path = "/disk/ssd6/tikv-proxy/queue/"
+  queue-data-path = "/disk/ssd1/tikv-proxy/queue/"
   mem-queue-size = 10000
   max-bytes-per-file = 104857600
   sync-every = 1000
@@ -44,8 +47,10 @@ enable-tracing = true
 
 [log]
   level = "info"
-  error-log-dir = "/disk/ssd6/tikv-proxy/logs/error.log"
-  access-log-dir = "/disk/ssd6/tikv-proxy/logs/access.log"
+  error-log-dir = "/disk/ssd1/tikv-proxy/logs/error.log"
+  access-log-dir = "/disk/ssd1/tikv-proxy/logs/access.log"
+  abnormal-access-log = true
   buffer-size = 102400
   max-bytes = 536870912
   backup_count = 10
+
