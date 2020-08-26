@@ -71,10 +71,9 @@ scrape_configs:
     honor_labels: true # don't overwrite job & instance labels
     static_configs:
     - targets:
-      - '192.168.14.101:6100'
-      - '192.168.14.102:6100'
-      - '192.168.14.103:6100'
-      - '192.168.14.104:6100'
+      - '192.168.30.22:6100'
+      - '192.168.30.23:6100'
+      - '192.168.30.24:6100'
   - job_name: "tidb_port_probe"
     scrape_interval: 30s
     metrics_path: /probe
@@ -115,10 +114,9 @@ scrape_configs:
       labels:
         group: 'pd'
     - targets:
-      - '192.168.14.101:6100'
-      - '192.168.14.102:6100'
-      - '192.168.14.103:6100'
-      - '192.168.14.104:6100'
+      - '192.168.30.22:6100'
+      - '192.168.30.23:6100'
+      - '192.168.30.24:6100'
       labels:
         group: 'tikv-proxy'
     - targets:

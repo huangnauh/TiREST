@@ -7,8 +7,6 @@ require (
 	github.com/DeanThompson/ginpprof v0.0.0-20190408063150-3be636683586
 	github.com/Shopify/sarama v1.26.4
 	github.com/gin-gonic/gin v1.6.3
-	github.com/golang/protobuf v1.3.4
-	github.com/google/gopacket v1.1.17
 	github.com/json-iterator/go v1.1.9
 	github.com/mozillazg/go-httpheader v0.2.1
 	github.com/nsqio/go-diskqueue v1.0.0
@@ -20,7 +18,6 @@ require (
 	github.com/stretchr/testify v1.5.1
 	github.com/tikv/client-go v0.0.0-20200513031230-7253be23eb15
 	github.com/urfave/cli/v2 v2.1.1
-	go.etcd.io/etcd v0.5.0-alpha.5.0.20191023171146-3cf2f69b5738
 	golang.org/x/net v0.0.0-20200520182314-0ba52f642ac2
 	golang.org/x/sys v0.0.0-20200808120158-1030fc2bf1d9 // indirect
 )
