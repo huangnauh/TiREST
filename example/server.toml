@@ -13,7 +13,7 @@ enable-tracing = true
   disable-lock-back-off = false
 
 [server]
-  http-host = "127.0.0.1"
+  http-host = "0.0.0.0"
   http-port = 6100
   replica-read = false
   read-timeout = "2s"

@@ -2,16 +2,17 @@ package server
 
 import (
 	"bytes"
+	"io/ioutil"
+	"net"
+	"net/http"
+	"strconv"
+
 	"github.com/gin-gonic/gin"
 	"gitlab.s.upyun.com/platform/tikv-proxy/middleware"
 	"gitlab.s.upyun.com/platform/tikv-proxy/model"
 	"gitlab.s.upyun.com/platform/tikv-proxy/utils"
 	"gitlab.s.upyun.com/platform/tikv-proxy/utils/json"
 	"gitlab.s.upyun.com/platform/tikv-proxy/xerror"
-	"io/ioutil"
-	"net"
-	"net/http"
-	"strconv"
 )
 
 func (s *Server) Get(c *gin.Context) {

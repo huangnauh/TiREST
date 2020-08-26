@@ -4,14 +4,15 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/pingcap/tidb/kv"
 	"github.com/pingcap/tidb/store/tikv"
 	"github.com/pingcap/tidb/util/execdetails"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"gitlab.s.upyun.com/platform/tikv-proxy/config"
-	"testing"
-	"time"
 )
 
 var (
@@ -22,7 +23,6 @@ func newClientTest(disableLockBackOff bool) (client *TiKV) {
 	flag.Parse()
 	if *pathArg == "" {
 		panic("need config file")
-		return
 	}
 	logrus.SetLevel(logrus.InfoLevel)
 	conf, err := config.InitConfig(*pathArg)
