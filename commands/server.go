@@ -2,16 +2,18 @@ package commands
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
+	"os/signal"
+	"runtime"
+	"syscall"
+
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	"gitlab.s.upyun.com/platform/tikv-proxy/config"
 	"gitlab.s.upyun.com/platform/tikv-proxy/log"
 	"gitlab.s.upyun.com/platform/tikv-proxy/middleware"
 	"gitlab.s.upyun.com/platform/tikv-proxy/server"
-	"io/ioutil"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 func init() {
@@ -37,6 +39,9 @@ func runServer(c *cli.Context) error {
 		return err
 	}
 	logrus.Infof("%s", conf)
+	maxProcs := runtime.GOMAXPROCS(0)
+	server.MaxProcs.Set(float64(maxProcs))
+	logrus.Infof("GOMAXPROCS: %d", maxProcs)
 
 	level, err := logrus.ParseLevel(conf.Log.Level)
 	if err != nil {
