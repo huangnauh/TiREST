@@ -28,6 +28,9 @@ app:
 lint:
 	revive -config ./revive.toml -formatter friendly ./...
 
+tool:
+	go build tools/tikv-assembly.go
+
 test: lint
 	go test -tags=jsoniter -v $(REPO_PATH)/... --conf=$(WORK_DIR)/example/server.toml
 

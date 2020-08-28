@@ -6,3 +6,5 @@ main
 tikv-proxy
 tikv-assembly
 bin/
+*.log
+queue/
