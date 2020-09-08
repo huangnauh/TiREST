@@ -24,7 +24,7 @@ func init() {
 			&cli.StringFlag{
 				Name:    "config",
 				Aliases: []string{"conf"},
-				Usage:   "proxy config",
+				Usage:   "server config",
 			},
 		},
 		Action: runServer,

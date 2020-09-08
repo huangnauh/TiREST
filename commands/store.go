@@ -22,7 +22,7 @@ func init() {
 			&cli.StringFlag{
 				Name:    "config",
 				Aliases: []string{"c"},
-				Usage:   "proxy config",
+				Usage:   "server config",
 				Value:   "./server.toml",
 			},
 			&cli.BoolFlag{
