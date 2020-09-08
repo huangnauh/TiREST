@@ -147,7 +147,7 @@ func (s *Server) CheckAndPut(c *gin.Context) {
 		return
 	}
 
-	opts := DefaultCheckOption()
+	opts := GetCheckOption(s.conf.Server.CheckOption)
 	if l.Exact {
 		opts.Check = ExactCheck
 	}

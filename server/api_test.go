@@ -4,6 +4,15 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"math/rand"
+	"net/http"
+	"net/http/httptest"
+	"path"
+	"testing"
+	"time"
+
 	"github.com/mozillazg/go-httpheader"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -15,14 +24,6 @@ import (
 	"gitlab.s.upyun.com/platform/tikv-proxy/utils"
 	"gitlab.s.upyun.com/platform/tikv-proxy/utils/json"
 	"gitlab.s.upyun.com/platform/tikv-proxy/xerror"
-	"io"
-	"io/ioutil"
-	"math/rand"
-	"net/http"
-	"net/http/httptest"
-	"path"
-	"testing"
-	"time"
 )
 
 var (
@@ -47,7 +48,6 @@ func newApiTest() (s *Server) {
 	flag.Parse()
 	if *pathArg == "" {
 		panic("need config file")
-		return
 	}
 	logrus.SetLevel(logrus.DebugLevel)
 	conf, err := config.InitConfig(*pathArg)
@@ -107,9 +107,69 @@ func reverseListTestCases() []listTestCase {
 	return listTC
 }
 
+var checkConfigCases = []struct {
+	Name   string
+	Old    []byte
+	New    []byte
+	CheckOption config.CheckOption
+	StatusCode  int
+} {
+	{"no_check_ok", []byte(`{"updated_at": 100, "old": true}`), []byte(`{"updated_at": 1, "old": true}`), config.NopCheck, 204},
+	{"no_check_same", []byte(`{"updated_at": 100, "old": true}`), []byte(`{"updated_at": 100, "old": true}`), config.NopCheck, 204},
+	{"exact_check_ok", []byte(`{"updated_at": 100, "old": true}`), []byte(`{"updated_at": 1, "old": true}`), config.ExactCheck, 204},
+	{"exact_check_ok", []byte(`{"updated_at": 100, "old": true}`), []byte(`{"updated_at": 100, "old": true}`), config.ExactCheck, 200},
+}
+
 func TestServer(t *testing.T) {
 	t.Parallel()
 	s := newApiTest()
+	t.Run("check", func(t *testing.T) {
+		for _, tt := range checkConfigCases {
+			tt := tt
+			t.Run(tt.Name, func(t *testing.T) {
+				oldOption := s.conf.Server.CheckOption
+				s.conf.Server.CheckOption = tt.CheckOption
+				b := RandBytes(20)
+				key := encodeBase64(b)
+
+				// Not Exist
+				result := PerformRequest(s.router, http.MethodGet,
+					path.Join(ApiRoute, "meta", key), nil, nil)
+				res := result.Result()
+				assert.Equal(t, http.StatusNotFound, res.StatusCode)
+				err := res.Body.Close()
+				assert.Nil(t, err)
+
+				// Put Old
+				body, err := json.Marshal(store.Log{New: utils.B2S(tt.Old)})
+				assert.Nil(t, err)
+				result = PerformRequest(s.router, http.MethodPut,
+					path.Join(ApiRoute, "meta", key), nil, bytes.NewReader(body))
+				res = result.Result()
+				assert.Equal(t, true, res.StatusCode < 300, fmt.Sprintf("Code %d", res.StatusCode))
+				assert.Equal(t, true, res.StatusCode >= 200, fmt.Sprintf("Code %d", res.StatusCode))
+				_, err = ioutil.ReadAll(res.Body)
+				assert.Nil(t, err)
+				err = res.Body.Close()
+				assert.Nil(t, err)
+
+				// Put New
+				body, err = json.Marshal(store.Log{Old: utils.B2S(tt.Old), New: utils.B2S(tt.New)})
+				assert.Nil(t, err)
+				result = PerformRequest(s.router, http.MethodPut,
+					path.Join(ApiRoute, "meta", key), nil, bytes.NewReader(body))
+				res = result.Result()
+				assert.Equal(t, tt.StatusCode, res.StatusCode, fmt.Sprintf("Code %d", res.StatusCode))
+				_, err = ioutil.ReadAll(res.Body)
+				assert.Nil(t, err)
+				err = res.Body.Close()
+				assert.Nil(t, err)
+
+				s.conf.Server.CheckOption = oldOption
+			})
+		}
+	})
+
 	t.Run("meta", func(t *testing.T) {
 		for _, tt := range checkTestCases {
 			tt := tt

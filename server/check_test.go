@@ -1,9 +1,10 @@
 package server
 
 import (
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"gitlab.s.upyun.com/platform/tikv-proxy/xerror"
-	"testing"
 )
 
 var checkTestCases = []struct {
