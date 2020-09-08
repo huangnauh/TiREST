@@ -1,6 +1,9 @@
 package server
 
-import "gitlab.s.upyun.com/platform/tikv-proxy/store"
+import (
+	"gitlab.s.upyun.com/platform/tikv-proxy/config"
+	"gitlab.s.upyun.com/platform/tikv-proxy/store"
+)
 
 func DefaultGetOption() store.GetOption {
 	return store.GetOption{}
@@ -12,20 +15,39 @@ func DefaultListOption() store.ListOption {
 	}
 }
 
-func DefaultCheckOption() store.CheckOption {
+func defaultCheckOption() store.CheckOption {
 	return store.CheckOption{
 		Check: TimestampCheck,
 	}
 }
 
-func ExactCheckOption() store.CheckOption {
+func timestampCheckOption() store.CheckOption {
+	return store.CheckOption{
+		Check: TimestampCheck,
+	}
+}
+
+func exactCheckOption() store.CheckOption {
 	return store.CheckOption{
 		Check: ExactCheck,
 	}
 }
 
-func NopCheckOption() store.CheckOption {
+func nopCheckOption() store.CheckOption {
 	return store.CheckOption{
 		Check: NopCheck,
+	}
+}
+
+func GetCheckOption(co config.CheckOption) store.CheckOption {
+	switch co {
+	case config.TimestampCheck:
+		return timestampCheckOption()
+	case config.ExactCheck:
+		return exactCheckOption()
+	case config.NopCheck:
+		return nopCheckOption()
+	default:
+		return defaultCheckOption()
 	}
 }

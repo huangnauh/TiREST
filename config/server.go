@@ -1,13 +1,14 @@
 package config
 
 import (
+	"io/ioutil"
+	"os"
+	"time"
+
 	"github.com/BurntSushi/toml"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"gitlab.s.upyun.com/platform/tikv-proxy/utils/json"
-	"io/ioutil"
-	"os"
-	"time"
 )
 
 type Duration struct {
@@ -60,16 +61,25 @@ func (d *Duration) MarshalText() (text []byte, err error) {
 	return []byte(d.Duration.String()), nil
 }
 
+type CheckOption string
+
+const (
+	NopCheck       CheckOption = "no"
+	ExactCheck     CheckOption = "exact"
+	TimestampCheck CheckOption = "timestamp"
+)
+
 type Server struct {
-	HttpHost          string    `toml:"http-host"`
-	HttpPort          int       `toml:"http-port"`
-	ReadTimeout       *Duration `toml:"read-timeout"`
-	ConnTimeout       *Duration `toml:"conn-timeout"`
-	ReadHeaderTimeout *Duration `toml:"read-header-timeout"`
-	WriteTimeout      *Duration `toml:"write-timeout"`
-	IdleTimeout       *Duration `toml:"idle-timeout"`
-	SleepBeforeClose  *Duration `toml:"sleep-before-close"`
-	ReplicaRead       bool      `toml:"replica-read"`
+	HttpHost          string      `toml:"http-host"`
+	HttpPort          int         `toml:"http-port"`
+	ReadTimeout       *Duration   `toml:"read-timeout"`
+	ConnTimeout       *Duration   `toml:"conn-timeout"`
+	ReadHeaderTimeout *Duration   `toml:"read-header-timeout"`
+	WriteTimeout      *Duration   `toml:"write-timeout"`
+	IdleTimeout       *Duration   `toml:"idle-timeout"`
+	SleepBeforeClose  *Duration   `toml:"sleep-before-close"`
+	ReplicaRead       bool        `toml:"replica-read"`
+	CheckOption       CheckOption `toml:"check-option"`
 }
 
 type Log struct {
@@ -116,6 +126,7 @@ func DefaultConfig() *Config {
 			IdleTimeout:       &Duration{2 * time.Minute},
 			SleepBeforeClose:  &Duration{5 * time.Second},
 			ReplicaRead:       false,
+			CheckOption:       TimestampCheck,
 		},
 		Connector: Connector{
 			Name:            "kafka",
