@@ -8,7 +8,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
-	"gitlab.s.upyun.com/platform/tikv-proxy/utils/json"
+	"github.com/huangnauh/tirest/utils/json"
 )
 
 type Duration struct {

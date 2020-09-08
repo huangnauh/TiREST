@@ -1,8 +1,9 @@
 package utils
 
 import (
-	"github.com/BurntSushi/toml"
 	"net/http"
+
+	"github.com/BurntSushi/toml"
 )
 
 type TOML struct {

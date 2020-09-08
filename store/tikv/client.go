@@ -2,16 +2,17 @@ package tikv
 
 import (
 	"context"
+	"time"
+
 	"github.com/sirupsen/logrus"
 	tikvConfig "github.com/tikv/client-go/config"
 	"github.com/tikv/client-go/key"
 	"github.com/tikv/client-go/txnkv"
 	"github.com/tikv/client-go/txnkv/kv"
-	"gitlab.s.upyun.com/platform/tikv-proxy/config"
-	"gitlab.s.upyun.com/platform/tikv-proxy/store"
-	"gitlab.s.upyun.com/platform/tikv-proxy/utils"
-	"gitlab.s.upyun.com/platform/tikv-proxy/xerror"
-	"time"
+	"github.com/huangnauh/tirest/config"
+	"github.com/huangnauh/tirest/store"
+	"github.com/huangnauh/tirest/utils"
+	"github.com/huangnauh/tirest/xerror"
 )
 
 const DBName = "tikv"

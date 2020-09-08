@@ -3,15 +3,16 @@ package kafka
 import (
 	"bytes"
 	"encoding/binary"
+	"os"
+	"time"
+
 	"github.com/Shopify/sarama"
 	"github.com/nsqio/go-diskqueue"
 	"github.com/sirupsen/logrus"
-	"gitlab.s.upyun.com/platform/tikv-proxy/config"
-	"gitlab.s.upyun.com/platform/tikv-proxy/log"
-	"gitlab.s.upyun.com/platform/tikv-proxy/store"
-	"gitlab.s.upyun.com/platform/tikv-proxy/version"
-	"os"
-	"time"
+	"github.com/huangnauh/tirest/config"
+	"github.com/huangnauh/tirest/log"
+	"github.com/huangnauh/tirest/store"
+	"github.com/huangnauh/tirest/version"
 )
 
 const (

@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/sirupsen/logrus"
-	"gitlab.s.upyun.com/platform/tikv-proxy/utils"
 	"io"
 	"os"
 	"path"
 	"time"
+
+	"github.com/sirupsen/logrus"
+	"github.com/huangnauh/tirest/utils"
 )
 
 const MaxBytesChan = 1024

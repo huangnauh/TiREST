@@ -2,10 +2,11 @@ package newtikv
 
 import (
 	"fmt"
-	"github.com/pingcap/tidb/util/execdetails"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/pingcap/tidb/util/execdetails"
 )
 
 func execDetailsString(execDetails *execdetails.StmtExecDetails) string {

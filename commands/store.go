@@ -4,13 +4,14 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"strconv"
+
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
-	"gitlab.s.upyun.com/platform/tikv-proxy/config"
-	"gitlab.s.upyun.com/platform/tikv-proxy/server"
-	"gitlab.s.upyun.com/platform/tikv-proxy/store"
-	"gitlab.s.upyun.com/platform/tikv-proxy/utils"
-	"strconv"
+	"github.com/huangnauh/tirest/config"
+	"github.com/huangnauh/tirest/server"
+	"github.com/huangnauh/tirest/store"
+	"github.com/huangnauh/tirest/utils"
 )
 
 func init() {

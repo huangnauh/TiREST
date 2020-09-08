@@ -1,11 +1,11 @@
 [Unit]
-Description=tikv-proxy.service
+Description=tirest.service
 After=network.target
 ConditionPathExists=/disk/ssd1/
 
 [Service]
-ExecStart=/disk/ssd1/tikv-proxy/tikv-proxy server --conf=/disk/ssd1/tikv-proxy/service.toml
-WorkingDirectory=/disk/ssd1/tikv-proxy/
+ExecStart=/disk/ssd1/tirest/tirest server --conf=/disk/ssd1/tirest/service.toml
+WorkingDirectory=/disk/ssd1/tirest/
 Restart=always
 LimitCORE=infinity
 LimitNOFILE=100000

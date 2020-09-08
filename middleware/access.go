@@ -1,13 +1,14 @@
 package middleware
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/sirupsen/logrus"
-	"gitlab.s.upyun.com/platform/tikv-proxy/log"
 	"io/ioutil"
 	"strconv"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/sirupsen/logrus"
+	"github.com/huangnauh/tirest/log"
 )
 
 type Metric struct {

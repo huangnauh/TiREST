@@ -1,8 +1,8 @@
 package server
 
 import (
-	"gitlab.s.upyun.com/platform/tikv-proxy/config"
-	"gitlab.s.upyun.com/platform/tikv-proxy/store"
+	"github.com/huangnauh/tirest/config"
+	"github.com/huangnauh/tirest/store"
 )
 
 func DefaultGetOption() store.GetOption {

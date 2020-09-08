@@ -10,10 +10,10 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
-	"gitlab.s.upyun.com/platform/tikv-proxy/config"
-	"gitlab.s.upyun.com/platform/tikv-proxy/log"
-	"gitlab.s.upyun.com/platform/tikv-proxy/middleware"
-	"gitlab.s.upyun.com/platform/tikv-proxy/server"
+	"github.com/huangnauh/tirest/config"
+	"github.com/huangnauh/tirest/log"
+	"github.com/huangnauh/tirest/middleware"
+	"github.com/huangnauh/tirest/server"
 )
 
 func init() {

@@ -1,10 +1,11 @@
 package newtikv
 
 import (
+	"time"
+
 	"github.com/pingcap/tidb/metrics"
 	"github.com/pingcap/tidb/util/execdetails"
 	"github.com/prometheus/client_golang/prometheus"
-	"time"
 )
 
 type Metric struct {

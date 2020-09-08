@@ -2,7 +2,7 @@ package kafka
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
-	"gitlab.s.upyun.com/platform/tikv-proxy/version"
+	"github.com/huangnauh/tirest/version"
 )
 
 type Metric struct {
@@ -15,12 +15,12 @@ var metric = newMetric()
 func newMetric() *Metric {
 	return &Metric{
 		Queue: prometheus.NewGauge(prometheus.GaugeOpts{
-			Subsystem: version.APPMetrics,
+			Subsystem: version.APP,
 			Name:      "connector_queue_depth",
 			Help:      "Connector queue depth.",
 		}),
 		Chan: prometheus.NewGauge(prometheus.GaugeOpts{
-			Subsystem: version.APPMetrics,
+			Subsystem: version.APP,
 			Name:      "connector_chan_depth",
 			Help:      "Connector chan depth.",
 		}),

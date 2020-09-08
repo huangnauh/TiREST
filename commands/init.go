@@ -1,11 +1,12 @@
 package commands
 
 import (
+	"os"
+
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
-	"gitlab.s.upyun.com/platform/tikv-proxy/config"
-	"gitlab.s.upyun.com/platform/tikv-proxy/xerror"
-	"os"
+	"github.com/huangnauh/tirest/config"
+	"github.com/huangnauh/tirest/xerror"
 )
 
 func init() {

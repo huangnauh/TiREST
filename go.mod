@@ -1,4 +1,4 @@
-module gitlab.s.upyun.com/platform/tikv-proxy
+module github.com/huangnauh/tirest
 
 go 1.13
 

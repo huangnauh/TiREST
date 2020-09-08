@@ -1,4 +1,4 @@
-PROG=tikv-proxy
+PROG=tirest
 _CLI_ZSH_AUTOCOMPLETE_HACK=1
 
 #compdef $PROG

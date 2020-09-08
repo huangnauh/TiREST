@@ -1,5 +1,5 @@
-PROG=tikv-proxy
-REPO_PATH=gitlab.s.upyun.com/platform/$(PROG)
+PROG=tirest
+REPO_PATH=github.com/huangnauh/$(PROG)
 GIT_COMMIT=$(shell git rev-parse --short HEAD)
 GIT_DESCRIBE=$(shell git describe --tags --always)
 IMPORT=$(REPO_PATH)/version
@@ -17,13 +17,13 @@ endif
 #tikv:
 #	git checkout main.go
 #	sed -i $(SED_EXTENSION) '/\/tikv"/s/\/\///' main.go
-#	go build -tags=jsoniter -ldflags '$(GOLDFLAGS)' -o tikv-proxy main.go
+#	go build -tags=jsoniter -ldflags '$(GOLDFLAGS)' -o tirest main.go
 
 
 app:
 #	git checkout main.go
 #	sed -i $(SED_EXTENSION) '/\/newtikv"/s/\/\///' main.go
-	go build -tags=jsoniter -ldflags '$(GOLDFLAGS)' -o bin/tikv-proxy$(GOOS) main.go
+	go build -tags=jsoniter -ldflags '$(GOLDFLAGS)' -o bin/tirest$(GOOS) main.go
 
 lint:
 	revive -config ./revive.toml -formatter friendly ./...

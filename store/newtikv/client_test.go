@@ -12,7 +12,7 @@ import (
 	"github.com/pingcap/tidb/util/execdetails"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"gitlab.s.upyun.com/platform/tikv-proxy/config"
+	"github.com/huangnauh/tirest/config"
 )
 
 var (
