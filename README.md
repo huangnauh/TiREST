@@ -40,9 +40,11 @@ $ ./bin/tikv-proxy server --config=example/example.toml
 
 ### CAS
 
-- url: `/api/v1/meta/{key}`.  `key` need url_base64
-- old: old value 
-- new: new value
+URI: `/api/v1/meta/{key}`.  
+
+- `key` need url_base64
+- `old`: old value 
+- `new`: new value
 
 ```
 curl http://127.0.0.1:6100/api/v1/meta/MTEx -d '{"new": "123"}' -v
@@ -69,7 +71,9 @@ curl http://127.0.0.1:6100/api/v1/meta/MTEx -d '{"new": "123", "old": ""}' -v
 
 ### Get
 
-- url: `/api/v1/meta/{key}`.  `key` need url_base64
+URI: `/api/v1/meta/{key}`.
+
+- `key` need url_base64
 
 ```
 curl http://127.0.0.1:6100/api/v1/meta/MTEx  -v
@@ -155,7 +159,7 @@ curl http://127.0.0.1:6100/api/v1/meta/MTEx -d '{"new": "456", "old": ""}' -v
 
 ### LIST
 
-- url: `/api/v1/List/`.
+URL: `/api/v1/List/`.
 
 ```
 curl http://127.0.0.1:6100/api/v1/list/ -H "X-Start: 1" -H "X-End: 2" -H "X-Limit: 1" -H "X-Raw: true" -v
