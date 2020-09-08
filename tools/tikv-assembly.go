@@ -1,3 +1,4 @@
+// https://medium.com/@siddontang/build-grpc-assembly-for-tikv-in-go-a5f38192f73f
 // Copyright 2012 Google, Inc. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style license
@@ -23,9 +24,6 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/hpack"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/examples/util"
@@ -38,8 +36,9 @@ import (
 	"github.com/pingcap/kvproto/pkg/pdpb"
 	"github.com/pingcap/kvproto/pkg/raft_serverpb"
 	"github.com/pingcap/kvproto/pkg/tikvpb"
-
 	"go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/hpack"
 )
 
 var iface = flag.String("i", "eth0", "Interface to get packets from")
