@@ -2,6 +2,7 @@ package log
 
 import (
 	"bytes"
+
 	"github.com/nsqio/go-diskqueue"
 	"github.com/sirupsen/logrus"
 )

@@ -3,8 +3,8 @@ package server
 import (
 	"bytes"
 	"github.com/sirupsen/logrus"
-	"gitlab.s.upyun.com/platform/tikv-proxy/utils/json"
-	"gitlab.s.upyun.com/platform/tikv-proxy/xerror"
+	"github.com/huangnauh/tirest/utils/json"
+	"github.com/huangnauh/tirest/xerror"
 	"reflect"
 )
 

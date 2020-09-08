@@ -16,14 +16,14 @@ import (
 	"github.com/mozillazg/go-httpheader"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"gitlab.s.upyun.com/platform/tikv-proxy/config"
-	"gitlab.s.upyun.com/platform/tikv-proxy/model"
-	"gitlab.s.upyun.com/platform/tikv-proxy/store"
-	_ "gitlab.s.upyun.com/platform/tikv-proxy/store/kafka"
-	_ "gitlab.s.upyun.com/platform/tikv-proxy/store/newtikv"
-	"gitlab.s.upyun.com/platform/tikv-proxy/utils"
-	"gitlab.s.upyun.com/platform/tikv-proxy/utils/json"
-	"gitlab.s.upyun.com/platform/tikv-proxy/xerror"
+	"github.com/huangnauh/tirest/config"
+	"github.com/huangnauh/tirest/model"
+	"github.com/huangnauh/tirest/store"
+	_ "github.com/huangnauh/tirest/store/kafka"
+	_ "github.com/huangnauh/tirest/store/newtikv"
+	"github.com/huangnauh/tirest/utils"
+	"github.com/huangnauh/tirest/utils/json"
+	"github.com/huangnauh/tirest/xerror"
 )
 
 var (

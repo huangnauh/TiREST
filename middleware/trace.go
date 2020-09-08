@@ -1,9 +1,10 @@
 package middleware
 
 import (
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	"golang.org/x/net/trace"
-	"strings"
 )
 
 type traceError struct {

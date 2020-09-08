@@ -2,12 +2,12 @@ package server
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
-	"gitlab.s.upyun.com/platform/tikv-proxy/version"
+	"github.com/huangnauh/tirest/version"
 )
 
 var MaxProcs = prometheus.NewGauge(
 	prometheus.GaugeOpts{
-		Subsystem: version.APPMetrics,
+		Subsystem: version.APP,
 		Name:      "maxprocs",
 		Help:      "The value of GOMAXPROCS.",
 	})

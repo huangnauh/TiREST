@@ -8,11 +8,11 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"gitlab.s.upyun.com/platform/tikv-proxy/middleware"
-	"gitlab.s.upyun.com/platform/tikv-proxy/model"
-	"gitlab.s.upyun.com/platform/tikv-proxy/utils"
-	"gitlab.s.upyun.com/platform/tikv-proxy/utils/json"
-	"gitlab.s.upyun.com/platform/tikv-proxy/xerror"
+	"github.com/huangnauh/tirest/middleware"
+	"github.com/huangnauh/tirest/model"
+	"github.com/huangnauh/tirest/utils"
+	"github.com/huangnauh/tirest/utils/json"
+	"github.com/huangnauh/tirest/xerror"
 )
 
 func (s *Server) Get(c *gin.Context) {

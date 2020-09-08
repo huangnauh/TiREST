@@ -2,7 +2,7 @@ package server
 
 import (
 	"encoding/base64"
-	"gitlab.s.upyun.com/platform/tikv-proxy/xerror"
+	"github.com/huangnauh/tirest/xerror"
 )
 
 const (

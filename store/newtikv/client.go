@@ -2,9 +2,12 @@ package newtikv
 
 import (
 	"context"
+	"sync"
+	"time"
+
 	"github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"github.com/pingcap/kvproto/pkg/metapb"
-	"github.com/pingcap/pd/v4/client"
+	pd "github.com/pingcap/pd/v4/client"
 	tikvConfig "github.com/pingcap/tidb/config"
 	"github.com/pingcap/tidb/kv"
 	"github.com/pingcap/tidb/store/tikv"
@@ -13,12 +16,10 @@ import (
 	"github.com/pingcap/tidb/util/execdetails"
 	"github.com/pingcap/tidb/util/logutil"
 	"github.com/sirupsen/logrus"
-	"gitlab.s.upyun.com/platform/tikv-proxy/config"
-	"gitlab.s.upyun.com/platform/tikv-proxy/store"
-	"gitlab.s.upyun.com/platform/tikv-proxy/utils"
-	"gitlab.s.upyun.com/platform/tikv-proxy/xerror"
-	"sync"
-	"time"
+	"github.com/huangnauh/tirest/config"
+	"github.com/huangnauh/tirest/store"
+	"github.com/huangnauh/tirest/utils"
+	"github.com/huangnauh/tirest/xerror"
 )
 
 const (

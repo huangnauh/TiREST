@@ -23,7 +23,7 @@ $ make app
 ## Run
 
 ```
-$ ./bin/tikv-proxy server --config=example/server.toml
+$ ./bin/tirest server --config=example/server.toml
 ```
 
 
@@ -38,7 +38,7 @@ $ make test
 ### Start
 
 ```
-$ ./bin/tikv-proxy server --config=example/example.toml
+$ ./bin/tirest server --config=example/example.toml
 ```
 
 ### Health
@@ -119,13 +119,13 @@ curl http://127.0.0.1:6100/api/v1/meta/MTEx  -v
 ### Store Get
 
 ```
-./bin/tikv-proxy store --config=example/example.toml get MTEx
+./bin/tirest store --config=example/example.toml get MTEx
 ```
 
 or
 
 ```
-./bin/tikv-proxy store --config=example/server.toml -raw get 111
+./bin/tirest store --config=example/server.toml -raw get 111
 ```
 
 Output:
@@ -209,7 +209,7 @@ curl http://127.0.0.1:6100/api/v1/list/ -H "X-Start: 1" -H "X-End: 2" -H "X-Limi
 ### Store LIST
 
 ```
-./bin/tikv-proxy store --config=example/server.toml -raw list --start=1 --end=2 --limit=2
+./bin/tirest store --config=example/server.toml -raw list --start=1 --end=2 --limit=2
 ```
 
 ```

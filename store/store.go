@@ -2,11 +2,12 @@ package store
 
 import (
 	"fmt"
+
 	"github.com/sirupsen/logrus"
-	"gitlab.s.upyun.com/platform/tikv-proxy/config"
-	"gitlab.s.upyun.com/platform/tikv-proxy/utils"
-	"gitlab.s.upyun.com/platform/tikv-proxy/utils/json"
-	"gitlab.s.upyun.com/platform/tikv-proxy/xerror"
+	"github.com/huangnauh/tirest/config"
+	"github.com/huangnauh/tirest/utils"
+	"github.com/huangnauh/tirest/utils/json"
+	"github.com/huangnauh/tirest/xerror"
 )
 
 type DB interface {

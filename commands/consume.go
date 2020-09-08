@@ -2,13 +2,14 @@ package commands
 
 import (
 	"context"
-	"github.com/Shopify/sarama"
-	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
-	"gitlab.s.upyun.com/platform/tikv-proxy/config"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/Shopify/sarama"
+	"github.com/sirupsen/logrus"
+	"github.com/urfave/cli/v2"
+	"github.com/huangnauh/tirest/config"
 )
 
 func init() {

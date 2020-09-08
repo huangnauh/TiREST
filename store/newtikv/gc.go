@@ -4,18 +4,19 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"math/rand"
+	"strconv"
+	"time"
+
 	"github.com/pingcap/kvproto/pkg/kvrpcpb"
-	"github.com/pingcap/pd/v4/client"
+	pd "github.com/pingcap/pd/v4/client"
 	"github.com/pingcap/tidb/kv"
 	"github.com/pingcap/tidb/metrics"
 	"github.com/pingcap/tidb/store/tikv"
 	"github.com/pingcap/tidb/store/tikv/oracle"
 	"github.com/pingcap/tidb/store/tikv/tikvrpc"
 	"github.com/sirupsen/logrus"
-	"gitlab.s.upyun.com/platform/tikv-proxy/xerror"
-	"math/rand"
-	"strconv"
-	"time"
+	"github.com/huangnauh/tirest/xerror"
 )
 
 type GCWorker struct {
