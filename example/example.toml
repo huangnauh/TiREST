@@ -1,0 +1,53 @@
+enable-tracing = true
+
+[store]
+  name = "newtikv"
+  path = "tikv://127.0.0.1:2379"
+  level = "debug"
+  gc-enable = true
+  pd-address = ["127.0.0.1:2379"]
+  read-timeout = "10s"
+  list-timeout = "1m0s"
+  write-timeout = "10s"
+  batch-delete-timeout = "10m0s"
+  disable-lock-back-off = false
+
+[server]
+  http-host = "0.0.0.0"
+  http-port = 6100
+  replica-read = false
+  read-timeout = "2s"
+  conn-timeout = "1s"
+  read-header-timeout = "2s"
+  write-timeout = "60s"
+  idle-timeout = "2m0s"
+  sleep-before-close = "1ms"
+  check-option = "exact"
+
+[connector]
+  name = "kafka"
+  version = "0.9.0.1"
+  enable-producer = false
+  debug-producer = false
+  broker-list = ["127.0.0.1:2379"]
+  fetch-metadata = true
+  entry = 10000
+  topic = "tikvmeta"
+  partition-num = 512
+  queue-data-path = "./queue/"
+  mem-queue-size = 10000
+  max-bytes-per-file = 104857600
+  sync-every = 1000
+  max-msg-size = 1048576
+  back-off = "250ms"
+  max-back-off = "1m0s"
+  sync-timeout = "2s"
+  write-timeout = "50ms"
+
+[log]
+  level = "debug"
+  error-log-dir = ""
+  access-log-dir = "std"
+  buffer-size = 102400
+  max-bytes = 536870912
+  backup_count = 10
