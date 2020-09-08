@@ -11,6 +11,7 @@ enable-tracing = true
   write-timeout = "10s"
   batch-delete-timeout = "10m0s"
   disable-lock-back-off = false
+  tso-slow-threshold = "150ms"
 
 [server]
   http-host = "0.0.0.0"
@@ -51,3 +52,4 @@ enable-tracing = true
   buffer-size = 102400
   max-bytes = 536870912
   backup_count = 10
+  slow-request = "50ms"

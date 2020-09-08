@@ -2,14 +2,17 @@
 
 TiREST is a HTTP server for TiKV, providing curl'able user facing API (HTTP+JSON).
 
+## Status
+
+TiREST is already usable though still experimental.
+
+The HTTP API is still in flux and may change in the near future.
+
 ## Feature
 
 - [x] GET CAS LIST Health
 - [x] CAS Command log to Kafka
 - [x] UnsafePut UnsafeDelete BatchPut BatchDelete
-
-### Get
-
 
 ## Install
 
@@ -36,6 +39,25 @@ $ make test
 
 ```
 $ ./bin/tikv-proxy server --config=example/example.toml
+```
+
+### Health
+
+URI: `/api/v1/health`.
+
+```
+curl http://127.0.0.1:6100/api/v1/health -v
+```
+
+```
+> GET /api/v1/health HTTP/1.1
+> User-Agent: curl/7.29.0
+> Host: 127.0.0.1:6100
+> Accept: */*
+>
+< HTTP/1.1 204 No Content
+< Date: Tue, 08 Sep 2020 07:07:54 GMT
+<
 ```
 
 ### CAS
